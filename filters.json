@@ -1,0 +1,10 @@
+{
+    "max_count": null,
+    "start_date": null,
+    "end_date": null,
+    "strict_mode": true,
+    "verify_mb_signature": true,
+    "verify_ha_family": true,
+    "allow_ha_community_tags": true,
+    "cross_check_sources": true
+}
