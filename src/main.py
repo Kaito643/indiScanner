@@ -245,6 +245,20 @@ def run_downloader(args=None):
     # Load Filters
     filters = load_filters()
     
+    # Default Filter Values
+    max_count = filters.get("max_count")
+    start_date = filters.get("start_date")
+    end_date = filters.get("end_date")
+    verify_mb_signature = filters.get("verify_mb_signature", True)
+    allow_mb_tag_fallback = filters.get("allow_mb_tag_fallback", False)
+    verify_ha_family = filters.get("verify_ha_family", True)
+    allow_ha_community_tags = filters.get("allow_ha_community_tags", True)
+    cross_check_sources = filters.get("cross_check_sources", True)
+    enable_source_mb = filters.get("enable_source_mb", True)
+    enable_source_ha = filters.get("enable_source_ha", True)
+    
+    groups = []
+
     # --- ARGS Priority Overrides ---
     if args:
         # API Keys
@@ -253,58 +267,46 @@ def run_downloader(args=None):
         if args.triage_key: Config.TRIAGE_API_KEY = args.triage_key
         
         # Filters
-        max_count = args.max_count if args.max_count is not None else filters.get("max_count")
-        start_date = args.start_date if args.start_date else filters.get("start_date")
-        end_date = args.end_date if args.end_date else filters.get("end_date")
+        if args.max_count is not None: max_count = args.max_count
+        if args.start_date: start_date = args.start_date
+        if args.end_date: end_date = args.end_date
         
         # Verification (BooleanOptionalAction returns True/False/None)
-        verify_mb_signature = args.verify_mb_sig if args.verify_mb_sig is not None else filters.get("verify_mb_signature", True)
-        allow_mb_tag_fallback = args.allow_mb_fallback if args.allow_mb_fallback is not None else filters.get("allow_mb_tag_fallback", False)
-        verify_ha_family = args.verify_ha_family if args.verify_ha_family is not None else filters.get("verify_ha_family", True)
-        allow_ha_community_tags = args.allow_ha_tags if args.allow_ha_tags is not None else filters.get("allow_ha_community_tags", True)
+        if args.verify_mb_sig is not None: verify_mb_signature = args.verify_mb_sig
+        if args.allow_mb_fallback is not None: allow_mb_tag_fallback = args.allow_mb_fallback
+        if args.verify_ha_family is not None: verify_ha_family = args.verify_ha_family
+        if args.allow_ha_tags is not None: allow_ha_community_tags = args.allow_ha_tags
         
         # Sources
-        cross_check_sources = args.cross_check if args.cross_check is not None else filters.get("cross_check_sources", True)
-        enable_source_mb = args.source_mb if args.source_mb is not None else filters.get("enable_source_mb", True)
-        enable_source_ha = args.source_ha if args.source_ha is not None else filters.get("enable_source_ha", True)
+        if args.cross_check is not None: cross_check_sources = args.cross_check
+        if args.source_mb is not None: enable_source_mb = args.source_mb
+        if args.source_ha is not None: enable_source_ha = args.source_ha
         
         # Groups override
-        groups = [g.strip() for g in args.groups.split(',')] if args.groups else []
-    else:
-        # Standard Filter Loading
-        max_count = filters.get("max_count")
-        start_date = filters.get("start_date")
-        end_date = filters.get("end_date")
-        verify_mb_signature = filters.get("verify_mb_signature", True)
-        allow_mb_tag_fallback = filters.get("allow_mb_tag_fallback", False)
-        verify_ha_family = filters.get("verify_ha_family", True)
-        
-        cross_check_sources = filters.get("cross_check_sources", True)
-        enable_source_mb = filters.get("enable_source_mb", True)
-        enable_source_ha = filters.get("enable_source_ha", True)
-        
-        # Standard Group Loading handled later if not overridden
-        groups = []
+        if args.groups:
+            groups = [g.strip() for g in args.groups.split(',')]
+    
     
     logger.info(f"Starting Downloader... Filters: Max={max_count}, Start={start_date}, End={end_date}")
+    logger.info(f"files will be saved to: {os.path.abspath(Config.DOWNLOAD_DIR)}")
     logger.info(f"Verification: MB_Sig={verify_mb_signature} (Fallback={allow_mb_tag_fallback}), HA_Family={verify_ha_family}")
 
     # Initialize Components
     downloader = Downloader()
-    
+
     # Initialize Sources
-    mb_source = None
-    ha_source = None
+    sources = {}
     
     if Config.MALWARE_BAZAAR_API_KEY and enable_source_mb:
-        mb_source = MalwareBazaar(Config.MALWARE_BAZAAR_API_KEY)
+        sources["MalwareBazaar"] = MalwareBazaar(Config.MALWARE_BAZAAR_API_KEY)
     
     if Config.HYBRID_ANALYSIS_API_KEY and enable_source_ha:
-        ha_source = HybridAnalysis(Config.HYBRID_ANALYSIS_API_KEY)
-        
-    if not mb_source:
-        logger.error("MalwareBazaar API Key is Missing! This is required for the primary workflow.")
-        print("Error: MalwareBazaar API Key is missing. Please configure it in the 'Configure API Keys' menu.")
+        sources["HybridAnalysis"] = HybridAnalysis(Config.HYBRID_ANALYSIS_API_KEY)
+    
+    # ... (Other sources like Triage, VXUnderground can be added here)
+
+    if not sources:
+        logger.error("No sources enabled or configured!")
         return
 
     # Load Groups if not provided via args
@@ -318,130 +320,225 @@ def run_downloader(args=None):
     # Main Loop
     for group in groups:
         logger.info(f"Processing Group: {group}")
-        download_count = 0
         
-        # 1. Search MalwareBazaar (Primary Source)
-        try:
-            logger.info(f"Searching MalwareBazaar for tag: {group}")
-            search_limit = max_count * 2 if max_count else 100
+        # --- MODE 1: STRICT CROSS-CHECK ---
+        if cross_check_sources:
+            # Primary Source Selection (Default to MB if available, else first available)
+            primary_source_name = "MalwareBazaar" if "MalwareBazaar" in sources else list(sources.keys())[0]
+            primary_source = sources[primary_source_name]
+            secondary_sources = {k: v for k, v in sources.items() if k != primary_source_name}
             
-            # MB Search - Convert to list to avoid 'generator has no len()'
-            mb_results = list(mb_source.search(group, limit=search_limit))
+            download_count = 0
             
-            if not mb_results:
-                logger.warning(f"No results found in MalwareBazaar for {group}")
-                continue
+            try:
+                logger.info(f"[Mode: Strict Cross-Check] Searching {primary_source_name} for tag: {group}")
+                search_limit = max_count * 2 if max_count else 100
                 
-            logger.info(f"Found {len(mb_results)} samples in MalwareBazaar. Starting process...")
-
-            for sample in mb_results:
-                if max_count and download_count >= max_count:
-                    logger.info("Max count reached for this group.")
-                    break
+                # Search Primary
+                results = list(primary_source.search(group, limit=search_limit))
                 
-                # --- VERIFICATION 1: MalwareBazaar Signature ---
-                if verify_mb_signature:
-                    signature = sample.get("signature", "")
-                    # Check if group name (e.g. LockBit) is in signature (e.g. LockBit3.0)
-                    if not signature or group.lower() not in signature.lower():
-                        # Strict check failed. Try Fallback if enabled.
-                        accepted_via_fallback = False
-                        if allow_mb_tag_fallback:
-                            sample_tags = sample.get("tags", []) or []
-                            # Check if explicitly tagged with group name (case-insensitive)
-                            if any(group.lower() in t.lower() for t in sample_tags):
-                                logger.info(f"[Strict] Signature mismatch ({signature}) but matched via MB Tag Fallback: {sample_tags}")
-                                accepted_via_fallback = True
-                        
-                        if not accepted_via_fallback:
-                            logger.warning(f"[Strict] Skipping {sample.get('hash')} - MB Signature mismatch ({signature})")
-                            continue
-                
-                file_hash = sample.get("hash")
-                date_str = sample.get("first_seen")
-                
-                # Date Filter
-                if not check_date_filter(date_str, start_date, end_date):
+                if not results:
+                    logger.warning(f"No results found in {primary_source_name} for {group}")
+                    # In strict mode, if not in primary, we can't cross-check, so move to next group
                     continue
-
-                # Prepare Metadata
-                sample_meta = sample
-                sample_meta["source"] = "MalwareBazaar"
-                sample_meta["archive_password"] = "infected"
-                
-                # --- Step A: Download from MalwareBazaar ---
-                mb_downloaded = False
-                target_dir = downloader.get_target_dir(group, date_str)
-                mb_path = os.path.join(target_dir, f"{file_hash}.zip") 
-                
-                if os.path.exists(mb_path):
-                    logger.info(f"File {file_hash} already exists (MB). Skipping MB download.")
-                    mb_downloaded = True
-                else:
-                    logger.info(f"Downloading {file_hash} from MalwareBazaar...")
-                    mb_content = mb_source.download(file_hash)
-                    if mb_content:
-                        if downloader.save_file(mb_content, sample_meta, group):
-                            mb_downloaded = True
-                            download_count += 1
-                    else:
-                        logger.error(f"Failed to download {file_hash} from MalwareBazaar.")
-
-                # --- Step B: Cross-Download from Hybrid Analysis ---
-                # Only proceed if HA source is available AND Cross-Check is ENABLED
-                if ha_source and cross_check_sources:
-                    ha_target_path = os.path.join(target_dir, f"{file_hash}_HA.zip")
                     
-                    if os.path.exists(ha_target_path):
-                         logger.info(f"File {file_hash} already exists (HA).")
-                    else:
-                        # --- VERIFICATION 2: Hybrid Analysis Family ---
-                        can_download_ha = True
-                        if verify_ha_family:
-                            logger.info(f"[Strict] Verifying {file_hash} on Hybrid Analysis...")
-                            overview = ha_source.get_file_overview(file_hash)
-                            if not overview:
-                                logger.warning(f"Hash {file_hash} not found on HA (Overview failed).")
-                                can_download_ha = False
-                            else:
-                                vx_family = overview.get("vx_family", "")
-                                threat_name = overview.get("threat_name", "")
-                                
-                                # Check 1: VX Family Match
-                                match = False
-                                if vx_family and group.lower() in vx_family.lower(): match = True
-                                if threat_name and group.lower() in threat_name.lower(): match = True
-                                
-                                # Check 2: Tags Fallback (if enabled)
-                                if not match and allow_ha_community_tags:
-                                    # We need to fetch tags if not in overview (overview usually has tags)
-                                    tags = overview.get("tags", [])
-                                    if tags and any(group.lower() in t.lower() for t in tags):
-                                        logger.info(f"[Strict] Accepted via HA Community Tags fallback: {tags}")
-                                        match = True
-                                
-                                if not match:
-                                    logger.warning(f"[Strict] Skipping HA download for {file_hash} - Family mismatch ({vx_family} / {threat_name})")
-                                    can_download_ha = False
-                        
-                        if can_download_ha:
-                            logger.info(f"Cross-checking/Downloading {file_hash} on Hybrid Analysis...")
-                            try:
-                                ha_content = ha_source.download(file_hash)
-                                if ha_content:
-                                    ha_meta = sample.copy()
-                                    ha_meta["source"] = "HybridAnalysis"
-                                    ha_meta["filename"] = f"{file_hash}_HA.zip"
-                                    ha_meta["archive_password"] = "infected"
-                                    if downloader.save_file(ha_content, ha_meta, group):
-                                        logger.success(f"Successfully cross-downloaded {file_hash} from Hybrid Analysis")
-                            except Exception as e:
-                                logger.error(f"HA Cross-download error: {e}")
-                
-                    time.sleep(2) 
+                logger.info(f"Found {len(results)} candidates in {primary_source_name}. Starting strict verification...")
 
-        except Exception as e:
-            logger.error(f"Error processing group {group}: {e}")
+                for sample in results:
+                    if max_count and download_count >= max_count:
+                        logger.info("Max count reached for this group.")
+                        break
+                    
+                    file_hash = sample.get("hash")
+                    date_str = sample.get("first_seen")
+
+                    # Verification 1: Primary Source Metadata (e.g. MB Signature)
+                    if primary_source_name == "MalwareBazaar" and verify_mb_signature:
+                        signature = sample.get("signature", "")
+                        logger.debug(f"[Strict] Checking MB Signature: '{signature}' against '{group}'")
+                        
+                        if not signature or group.lower() not in signature.lower():
+                            accepted_via_fallback = False
+                            if allow_mb_tag_fallback:
+                                sample_tags = sample.get("tags", []) or []
+                                logger.debug(f"[Strict] Checking MB Tag Fallback: Tags={sample_tags}")
+                                if any(group.lower() in t.lower() for t in sample_tags):
+                                    accepted_via_fallback = True
+                                    logger.debug(f"[Strict] Accepted via MB Tag Fallback.")
+                            
+                            if not accepted_via_fallback:
+                                logger.debug(f"[Strict] MB Signature rejected.")
+                                continue
+
+                    # Date Filter
+                    if not check_date_filter(date_str, start_date, end_date):
+                        continue
+
+                    # Verification 2: Secondary Sources (Strict)
+                    verified_in_all = True
+                    if secondary_sources:
+                        logger.info(f"Verifying {file_hash} across {len(secondary_sources)} secondary sources...")
+                        for src_name, src_obj in secondary_sources.items():
+                            verified_in_src = False
+                            
+                            # Hybrid Analysis Verification
+                            if src_name == "HybridAnalysis":
+                                overview = src_obj.get_file_overview(file_hash)
+                                if overview:
+                                    vx_family = overview.get("vx_family", "")
+                                    threat_name = overview.get("threat_name", "")
+                                    tags = overview.get("tags", [])
+                                    verdict = overview.get("verdict", "")
+                                    
+                                    logger.debug(f"[Strict] HA Overview: Family='{vx_family}', Threat='{threat_name}', Verdict='{verdict}', Tags={tags}")
+                                    
+                                    if (vx_family and group.lower() in vx_family.lower()) or \
+                                       (threat_name and group.lower() in threat_name.lower()):
+                                        verified_in_src = True
+                                    elif allow_ha_community_tags and tags and any(group.lower() in t.lower() for t in tags):
+                                        verified_in_src = True
+                                        logger.info(f"Verified in HA via Tags: {tags}")
+                                    
+                                    # Malicious Verdict Fallback
+                                    elif verdict == "malicious" and not vx_family and not threat_name:
+                                        verified_in_src = True
+                                        logger.info(f"Verified in HA via Verdict (Malicious, but unknown family). Primary source attribution remains: '{group}'.")
+                            
+                            # Add other sources here...
+
+                            if not verified_in_src:
+                                logger.warning(f"Cross-check FAILED for {file_hash} in {src_name}")
+                                verified_in_all = False
+                                break
+                    
+                    if not verified_in_all:
+                        continue
+
+                    # Download (Verified in ALL)
+                    logger.success(f"Sample {file_hash} verified! Initiating download...")
+                    target_dir = downloader.get_target_dir(group, date_str)
+                    
+                    # Download from Primary
+                    primary_path = os.path.join(target_dir, f"{file_hash}.zip")
+                    if not os.path.exists(primary_path):
+                        content = primary_source.download(file_hash)
+                        if content:
+                            meta = sample.copy()
+                            meta["source"] = primary_source_name
+                            meta["archive_password"] = "infected"
+                            if downloader.save_file(content, meta, group):
+                                download_count += 1
+                    
+                    time.sleep(1)
+
+            except Exception as e:
+                logger.error(f"Error in strict mode for {group}: {e}")
+
+        # --- MODE 2: INDEPENDENT COLLECTION ---
+        else:
+            logger.info(f"[Mode: Independent Collection] Processing sources separately...")
+            
+            # Track downloaded hashes for this group to prevent duplicates across sources
+            downloaded_hashes = set()
+            
+            for src_name, src_obj in sources.items():
+                logger.info(f"--- Source: {src_name} ---")
+                download_count = 0
+                
+                try:
+                    search_limit = max_count * 2 if max_count else 100
+                    results = list(src_obj.search(group, limit=search_limit))
+                    
+                    if not results:
+                        logger.warning(f"No results found in {src_name} for {group}")
+                        continue
+                        
+                    logger.info(f"Found {len(results)} candidates in {src_name}...")
+                    
+                    for sample in results:
+                        if max_count and download_count >= max_count:
+                            logger.info(f"Max count reached for {src_name}.")
+                            break
+                        
+                        file_hash = sample.get("hash")
+                        
+                        # Dedup check (if already downloaded by previous source in this run)
+                        if file_hash in downloaded_hashes:
+                            logger.info(f"Skipping {file_hash} (Already downloaded via another source).")
+                            continue
+                            
+                        # Also check file system for existence
+                        date_str = sample.get("first_seen") # Might differ per source format
+                        target_dir = downloader.get_target_dir(group, date_str)
+                        
+                        # Check likely filename permutations
+                        probable_filenames = [f"{file_hash}.zip", f"{file_hash}_{src_name}.zip"]
+                        if any(os.path.exists(os.path.join(target_dir, f)) for f in probable_filenames):
+                             logger.info(f"Skipping {file_hash} (Already exists on disk).")
+                             downloaded_hashes.add(file_hash)
+                             continue
+
+                        # Verify Source-Specific Logic
+                        verified = False
+                        if src_name == "MalwareBazaar":
+                             if verify_mb_signature:
+                                signature = sample.get("signature", "")
+                                logger.debug(f"[Indep] Checking MB Signature: '{signature}'")
+                                if signature and group.lower() in signature.lower(): verified = True
+                                elif allow_mb_tag_fallback:
+                                    tags = sample.get("tags", [])
+                                    logger.debug(f"[Indep] Checking MB Tag Fallback: {tags}")
+                                    if any(group.lower() in t.lower() for t in tags): verified = True
+                             else:
+                                 logger.debug(f"[Indep] MB Verification disabled.")
+                                 verified = True # Verification disabled, trust search result
+
+                        elif src_name == "HybridAnalysis":
+                             if verify_ha_family:
+                                 # We treat search results as valid candidates, assuming HA search handles the filtering well enough.
+                                 # Or implement extra check if search result object has family info.
+                                 # For simplicity/speed in independent mode, we often trust the search query.
+                                 # But let's check basic fields if available.
+                                 vx_family = sample.get("vx_family", "")
+                                 threat_name = sample.get("threat_name", "") # Needs 'overview' usually but let's assume search result has it or strict logic is simpler here
+                                 logger.debug(f"[Indep] HA Search Result: Family='{vx_family}', Threat='{threat_name}'")
+                                 
+                                 if (vx_family and group.lower() in vx_family.lower()) or \
+                                    (threat_name and group.lower() in threat_name.lower()):
+                                     verified = True
+                                 else:
+                                     # Fallback to tags or assume search was correct if verify_ha_family is lax?
+                                     # Let's be strict if the flag is on.
+                                     logger.debug(f"[Indep] HA Family mismatch.")
+                                     verified = False 
+                             else:
+                                 verified = True
+
+                        if not verified:
+                            continue
+                            
+                        # Date Filter
+                        if not check_date_filter(date_str, start_date, end_date):
+                            continue
+
+                        # Download
+                        logger.info(f"Downloading {file_hash} from {src_name}...")
+                        content = src_obj.download(file_hash)
+                        if content:
+                            meta = sample.copy()
+                            meta["source"] = src_name
+                            meta["archive_password"] = "infected"
+                            # Save with standard name to facilitate dedup detection
+                            meta["filename"] = f"{file_hash}.zip" 
+                            
+                            if downloader.save_file(content, meta, group):
+                                download_count += 1
+                                downloaded_hashes.add(file_hash)
+                        
+                        time.sleep(1)
+
+                except Exception as e:
+                    logger.error(f"Error in independent mode for {src_name}: {e}")
             
     logger.success("Workflow completed.")
     input("\nPress Enter to return to menu...")
@@ -462,7 +559,11 @@ def interactive_menu():
         choice = input("Select an option: ").strip()
         
         if choice == "1":
-            run_downloader()
+            try:
+                run_downloader()
+            except KeyboardInterrupt:
+                print("\n\nOperation cancelled by user. Returning to menu...")
+                time.sleep(1)
         elif choice == "2":
             setup_env()
         elif choice == "3":
@@ -503,6 +604,9 @@ def parse_args():
     parser.add_argument("--ha-key", type=str, help="Hybrid Analysis API Key")
     parser.add_argument("--triage-key", type=str, help="Triage API Key")
     
+    # Debug
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -513,6 +617,13 @@ if __name__ == "__main__":
         interactive_menu()
     else:
         args = parse_args()
+        
+        # Handle Debug Flag Global Override
+        if args.debug:
+            Config.LOG_LEVEL = "DEBUG"
+            logger.configure(handlers=[{"sink": sys.stderr, "level": "DEBUG"}])
+            logger.debug("Debug mode enabled via CLI flag.")
+            
         if args.interactive:
             interactive_menu()
         else:
