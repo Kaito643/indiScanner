@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# RanSoc - Linux Build Script
+# IndiFinder - Linux Build Script
 
-echo "=== RanSoc - Linux Builder ==="
+echo "=== IndiFinder - Linux Builder ==="
 
 # Check for Python
 if ! command -v python3 &> /dev/null; then
@@ -22,8 +22,8 @@ pip install pyinstaller
 
 # Build Binary
 echo "[*] Building binary..."
-pyinstaller --onefile --name ransoc src/main.py
+pyinstaller --onefile --name indiFinder src/main.py
 
 echo "[+] Build complete!"
-echo "Binary location: dist/ransoc"
-echo "To run: ./dist/ransoc"
+echo "Binary location: dist/indiFinder"
+echo "To run: ./dist/indiFinder"

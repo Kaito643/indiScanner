@@ -1,4 +1,4 @@
-# RansOC (Ransomware IOC Downloader)
+# IndiFinder (Ransomware IOC Downloader)
 
 This tool automates the discovery, download, and cross-verification of malware samples (IOCs) associated with specific ransomware groups. It facilitates incident response and threat intelligence workflows by aggregating samples from multiple sources.
 
@@ -16,8 +16,8 @@ This tool automates the discovery, download, and cross-verification of malware s
 
 1.  **Clone the Repository:**
     ```bash
-    git clone https://github.com/username/ransoc.git
-    cd ransoc
+    git clone https://github.com/username/indiFinder.git
+    cd indiFinder
     ```
 
 2.  **Set Up Virtual Environment:**
@@ -38,8 +38,8 @@ This tool automates the discovery, download, and cross-verification of malware s
     To create a standalone executable (`.exe`):
     ```bash
     pip install pyinstaller
-    pyinstaller --onefile --name ransoc src/main.py
-    # Output: dist/ransoc.exe
+    pyinstaller --onefile --name indiFinder src/main.py
+    # Output: dist/indiFinder.exe
     ```
 
     **For Linux Users:**
@@ -47,7 +47,7 @@ This tool automates the discovery, download, and cross-verification of malware s
     ```bash
     chmod +x scripts/build_linux.sh
     ./scripts/build_linux.sh
-    # Output: dist/ransoc
+    # Output: dist/indiFinder
     ```
 
 ## Configuration

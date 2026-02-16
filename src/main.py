@@ -547,7 +547,7 @@ def interactive_menu():
     while True:
         clear_screen()
         print("==========================================")
-        print("   RANSOC (RANSOMWARE IOC DOWNLOADER)   ")
+        print("   INDIFINDER (IOC DOWNLOADER)   ")
         print("==========================================")
         print("1. Initiate Collection Workflow")
         print("2. Configure API Credentials")
@@ -577,7 +577,7 @@ def interactive_menu():
             input("Invalid option. Press Enter to try again.")
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="RanSoc - Automated Threat Intelligence Collection")
+    parser = argparse.ArgumentParser(description="IndiFinder - Automated Threat Intelligence Collection")
     
     # Execution Mode
     parser.add_argument("--interactive", action="store_true", help="Force interactive mode (default if no args provided)")
