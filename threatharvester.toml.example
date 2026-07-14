@@ -1,0 +1,25 @@
+# ThreatHarvester configuration (optional).
+# Copy to `threatharvester.toml`, or point $TH_CONFIG / --config at it.
+# Every field has a default, so this whole file is optional.
+
+# Enable/disable sources. Key-gated sources also require their credential in .env.
+[sources]
+threatfox = true
+urlhaus = true
+otx = true
+abuseipdb = true
+
+# Cross-run disk cache. Avoids re-hitting rate-limited APIs.
+[cache]
+enabled = true
+ttl_seconds = 3600
+dir = ".th-cache"
+
+# Per-source rate limiting.
+[ratelimit]
+default_ms = 1000   # minimum ms between consecutive requests to the same source
+
+# Entity name -> search terms. The name itself is always included automatically.
+[aliases]
+Lazarus = ["Hidden Cobra", "Zinc", "Lazarus"]
+BlackNevas = ["Trigona", "BlackNevas"]

@@ -1,72 +1,77 @@
-pub mod models;
-pub mod sources;
-pub mod engine;
+//! ThreatHarvester CLI — a thin front-end over the `threat_harvester` library crate.
 
-use clap::Parser;
-use log::{info, error};
+use clap::{Parser, Subcommand};
+use threat_harvester::config::Config;
+use threat_harvester::engine::Engine;
+use threat_harvester::export::{self, Format};
+use threat_harvester::model::entity::{EntityKind, ThreatEntity};
+use threat_harvester::model::request::{Filters, RawIoc, Request};
+use threat_harvester::sources;
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// Name of the Threat Actor or Malware Family
-    #[arg(short, long)]
-    target: String,
+#[command(name = "threatharvester", version, about)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
 
-    /// Type of target (ACTOR | MALWARE)
-    #[arg(short = 'T', long, default_value = "MALWARE")]
-    type_: String,
-
-    /// Number of days to look back
-    #[arg(short, long, default_value_t = 30)]
-    days: u32,
-
-    /// Output format (json | csv)
-    #[arg(short, long, default_value = "json")]
+    /// Output format: json | csv | stix | misp
+    #[arg(short, long, default_value = "json", global = true)]
     output: String,
+
+    /// Path to a config file (defaults to $TH_CONFIG or ./threatharvester.toml)
+    #[arg(short, long, global = true)]
+    config: Option<String>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Command {
+    /// Enrich a single IOC (IP / domain / URL / hash) — type is auto-detected.
+    Enrich {
+        /// The IOC value to enrich (may be defanged, e.g. `1[.]2[.]3[.]4`).
+        value: String,
+    },
+    /// Collect IOCs related to a threat entity (actor / malware family / campaign).
+    Collect {
+        /// The entity name to collect for.
+        target: String,
+        /// Entity kind: actor | malware | campaign
+        #[arg(short, long, default_value = "malware")]
+        kind: String,
+    },
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    dotenv::dotenv().ok();
     env_logger::init();
-    
-    let args = Args::parse();
-    info!("Starting ThreatHarvester for target: {}", args.target);
 
-    // Provide default sources
-    // In a real app, we might load these from config or CLI args
-    let sources: Vec<Box<dyn crate::sources::ThreatSource>> = vec![
-        Box::new(crate::sources::MockAlienVault),
-        Box::new(crate::sources::MockThreatFox),
-    ];
+    let cli = Cli::parse();
 
-    let engine = crate::engine::Engine::new(sources);
-
-    let config = crate::models::QueryConfig {
-        target_name: args.target.clone(),
-        target_type: match args.type_.to_uppercase().as_str() {
-            "ACTOR" => crate::models::ThreatEntity::Actor,
-            "CAMPAIGN" => crate::models::ThreatEntity::Campaign,
-            _ => crate::models::ThreatEntity::MalwareFamily,
+    let request = match &cli.command {
+        Command::Enrich { value } => Request::Enrich(RawIoc::new(value.clone())),
+        Command::Collect { target, kind } => Request::Collect {
+            entity: ThreatEntity::new(target.clone(), parse_kind(kind)),
+            filters: Filters::default(),
         },
-        lookback_days: args.days,
     };
 
-    match engine.run(config).await {
-        Ok(indicators) => {
-            if args.output.to_lowercase() == "json" {
-                println!("{}", serde_json::to_string_pretty(&indicators)?);
-            } else {
-                // CSV or other format
-                println!("value,type,source,confidence");
-                for ind in indicators {
-                    println!("{},{:?},{},{}", ind.value, ind.indicator_type, ind.source, ind.confidence_level);
-                }
-            }
-        }
-        Err(e) => {
-            error!("Application error: {}", e);
-        }
-    }
-    
+    let config = match &cli.config {
+        Some(path) => Config::from_path(path).unwrap_or_default(),
+        None => Config::load(),
+    };
+    let format: Format = cli.output.parse()?;
+
+    let engine = Engine::new(sources::from_config(&config), config);
+    let indicators = engine.run(request).await?;
+
+    println!("{}", export::render(&indicators, format)?);
     Ok(())
+}
+
+fn parse_kind(kind: &str) -> EntityKind {
+    match kind.to_lowercase().as_str() {
+        "actor" => EntityKind::Actor,
+        "campaign" => EntityKind::Campaign,
+        _ => EntityKind::MalwareFamily,
+    }
 }
