@@ -31,7 +31,10 @@ impl Engine {
             config.cache.ttl_seconds,
             config.cache.enabled,
         );
-        let limiter = RateLimiter::new(config.ratelimit.default_ms);
+        let limiter = RateLimiter::with_overrides(
+            config.ratelimit.default_ms,
+            config.ratelimit.per_source.clone(),
+        );
         Self {
             sources,
             config,

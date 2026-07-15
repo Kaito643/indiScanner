@@ -17,6 +17,7 @@ pub mod malwarebazaar;
 pub mod otx;
 pub mod threatfox;
 pub mod urlhaus;
+pub mod virustotal;
 
 /// The abuse.ch `Auth-Key` shared by ThreatFox and URLhaus (both now require it).
 /// Free key from <https://auth.abuse.ch/>. Returns `None` if unset/empty.
@@ -60,6 +61,12 @@ pub fn from_config(config: &crate::config::Config) -> Vec<Box<dyn ThreatSource>>
         match abuseipdb::AbuseIpdb::from_env() {
             Some(a) => sources.push(Box::new(a)),
             None => log::warn!("AbuseIPDB disabled: ABUSEIPDB_API_KEY not set."),
+        }
+    }
+    if toggles.virustotal {
+        match virustotal::VirusTotal::from_env() {
+            Some(vt) => sources.push(Box::new(vt)),
+            None => log::warn!("VirusTotal disabled: VT_API_KEY not set."),
         }
     }
     sources
