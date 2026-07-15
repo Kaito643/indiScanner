@@ -64,6 +64,8 @@ fn pattern_for(ty: &IndicatorType, value: &str) -> Option<String> {
         IndicatorType::Md5 => format!("[file:hashes.'MD5' = '{v}']"),
         IndicatorType::Sha1 => format!("[file:hashes.'SHA-1' = '{v}']"),
         IndicatorType::Sha256 => format!("[file:hashes.'SHA-256' = '{v}']"),
+        IndicatorType::Sha512 => format!("[file:hashes.'SHA-512' = '{v}']"),
+        IndicatorType::Ssdeep => format!("[file:hashes.'SSDEEP' = '{v}']"),
         IndicatorType::Email => format!("[email-addr:value = '{v}']"),
         IndicatorType::Other(_) => return None,
     })

@@ -19,6 +19,9 @@ pub enum IndicatorType {
     Md5,
     Sha1,
     Sha256,
+    Sha512,
+    /// ssdeep fuzzy hash (`blocksize:chunk:double_chunk`).
+    Ssdeep,
     // email
     Email,
     /// Not yet modelled; carries the original type label from the source.
@@ -36,6 +39,8 @@ impl IndicatorType {
             IndicatorType::Md5 => "md5",
             IndicatorType::Sha1 => "sha1",
             IndicatorType::Sha256 => "sha256",
+            IndicatorType::Sha512 => "sha512",
+            IndicatorType::Ssdeep => "ssdeep",
             IndicatorType::Email => "email",
             IndicatorType::Other(_) => "other",
         }
