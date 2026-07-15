@@ -6,7 +6,9 @@
 
 use crate::model::indicator::IndicatorType;
 
+mod file;
 mod network;
+pub use file::FileModule;
 pub use network::NetworkModule;
 
 /// The outcome of classifying a raw value: its type and canonical form.
@@ -32,8 +34,8 @@ pub trait IocModule: Send + Sync {
 
 /// The default set of IOC-type modules, in priority order.
 pub fn default_modules() -> Vec<Box<dyn IocModule>> {
-    vec![Box::new(NetworkModule)]
-    // file and email modules join here in later work.
+    vec![Box::new(NetworkModule), Box::new(FileModule)]
+    // email and further modules join here in later work.
 }
 
 /// Detect the type of a raw IOC by consulting each module in order.

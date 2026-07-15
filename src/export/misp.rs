@@ -42,6 +42,8 @@ fn misp_type(ty: &IndicatorType) -> Option<(&'static str, &'static str)> {
         IndicatorType::Md5 => ("md5", "Payload delivery"),
         IndicatorType::Sha1 => ("sha1", "Payload delivery"),
         IndicatorType::Sha256 => ("sha256", "Payload delivery"),
+        IndicatorType::Sha512 => ("sha512", "Payload delivery"),
+        IndicatorType::Ssdeep => ("ssdeep", "Payload delivery"),
         IndicatorType::Email => ("email-src", "Payload delivery"),
         IndicatorType::Other(_) => return None,
     })

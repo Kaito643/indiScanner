@@ -6,6 +6,7 @@
 [sources]
 threatfox = true
 urlhaus = true
+malwarebazaar = true
 otx = true
 abuseipdb = true
 

@@ -13,6 +13,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 pub mod abuseipdb;
+pub mod malwarebazaar;
 pub mod otx;
 pub mod threatfox;
 pub mod urlhaus;
@@ -45,6 +46,9 @@ pub fn from_config(config: &crate::config::Config) -> Vec<Box<dyn ThreatSource>>
     }
     if toggles.urlhaus {
         sources.push(Box::new(urlhaus::URLhaus::new()));
+    }
+    if toggles.malwarebazaar {
+        sources.push(Box::new(malwarebazaar::MalwareBazaar::new()));
     }
     if toggles.otx {
         match otx::AlienVaultOTX::from_env() {

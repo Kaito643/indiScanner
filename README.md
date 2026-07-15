@@ -35,9 +35,10 @@ confidence scoring and clean STIX 2.1 / MISP export.
 | --- | --- | --- | --- |
 | ThreatFox (abuse.ch) | IOCs | lookup + search | ✅ |
 | URLhaus (abuse.ch) | Malicious URLs | lookup + search | ✅ |
+| MalwareBazaar (abuse.ch) | Malware samples | lookup + search | ✅ |
 | AlienVault OTX | Open Threat Exchange | lookup | ✅ |
 | AbuseIPDB | IP reputation | lookup | ✅ |
-| VirusTotal, MISP, Pulsedive, MalwareBazaar | mixed | — | planned |
+| VirusTotal, MISP, Pulsedive | mixed | — | planned |
 
 ## Roadmap
 
@@ -47,6 +48,7 @@ confidence scoring and clean STIX 2.1 / MISP export.
 - [x] **Phase 3** — Enrichment path end-to-end + AbuseIPDB.
 - [x] **Phase 4** — Per-source caching + rate limiting + config file.
 - [x] **Phase 5** — STIX 2.1 / MISP export.
+- [x] **Phase 6** — `file` module (hash digests + ssdeep) + MalwareBazaar.
 - [ ] **Future** — Indicators of Attack (IOA): relationship graph + MITRE ATT&CK mapping.
 
 ## Build & Run
@@ -60,6 +62,9 @@ cargo build --release
 cargo run -- enrich 1.2.3.4
 cargo run -- enrich "1[.]2[.]3[.]4"
 
+# Enrich a file hash (MD5/SHA-1/SHA-256/SHA-512/ssdeep auto-detected)
+cargo run -- enrich 803385cf25070740f5b09e685d2f531c
+
 # Collect IOCs for a threat entity (aliases are expanded automatically)
 cargo run -- collect LockBit --kind actor
 
@@ -69,7 +74,7 @@ cargo run -- enrich 1.2.3.4 --output stix
 
 Copy `.env.example` to `.env` and add API keys:
 
-- `ABUSE_CH_AUTH_KEY` — required for ThreatFox + URLhaus (free from <https://auth.abuse.ch/>)
+- `ABUSE_CH_AUTH_KEY` — required for ThreatFox + URLhaus + MalwareBazaar (free from <https://auth.abuse.ch/>)
 - `OTX_API_KEY` — enables AlienVault OTX
 - `ABUSEIPDB_API_KEY` — enables AbuseIPDB IP reputation
 

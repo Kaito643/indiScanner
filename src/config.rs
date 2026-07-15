@@ -37,6 +37,7 @@ impl Default for Config {
 pub struct SourceToggles {
     pub threatfox: bool,
     pub urlhaus: bool,
+    pub malwarebazaar: bool,
     pub otx: bool,
     pub abuseipdb: bool,
 }
@@ -46,6 +47,7 @@ impl Default for SourceToggles {
         Self {
             threatfox: true,
             urlhaus: true,
+            malwarebazaar: true,
             otx: true,
             abuseipdb: true,
         }
@@ -140,7 +142,7 @@ mod tests {
     #[test]
     fn defaults_enable_all_sources_and_seed_aliases() {
         let c = Config::default();
-        assert!(c.sources.threatfox && c.sources.abuseipdb);
+        assert!(c.sources.threatfox && c.sources.abuseipdb && c.sources.malwarebazaar);
         assert!(c.aliases.contains_key("Lazarus"));
     }
 
