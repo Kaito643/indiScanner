@@ -82,6 +82,10 @@ struct CollectQuery {
     entity: String,
     kind: Option<String>,
     limit: Option<usize>,
+    tag: Option<String>,
+    #[serde(rename = "type")]
+    ioc_type: Option<String>,
+    min_confidence: Option<u8>,
 }
 
 async fn collect(
@@ -98,6 +102,9 @@ async fn collect(
         ),
         filters: Filters {
             max_results: q.limit,
+            tag: q.tag,
+            ioc_type: q.ioc_type,
+            min_confidence: q.min_confidence,
             ..Filters::default()
         },
     };

@@ -225,17 +225,33 @@ fn parse_query(q: &str) -> Result<Request, String> {
         Some("collect") => {
             let name = parts.get(1).ok_or("`collect` needs a name")?;
             let mut kind = "malware";
-            let mut limit = None;
+            let mut filters = Filters::default();
             let mut i = 2;
             while i < parts.len() {
+                let val = || parts.get(i + 1).copied();
                 match parts[i] {
                     "--kind" | "-k" => {
-                        kind = parts.get(i + 1).ok_or("`--kind` needs a value")?;
+                        kind = val().ok_or("`--kind` needs a value")?;
                         i += 2;
                     }
                     "--limit" | "-l" => {
-                        let n = parts.get(i + 1).ok_or("`--limit` needs a number")?;
-                        limit = Some(n.parse().map_err(|_| "`--limit` must be a number")?);
+                        let n = val().ok_or("`--limit` needs a number")?;
+                        filters.max_results =
+                            Some(n.parse().map_err(|_| "`--limit` must be a number")?);
+                        i += 2;
+                    }
+                    "--tag" => {
+                        filters.tag = Some(val().ok_or("`--tag` needs a value")?.to_string());
+                        i += 2;
+                    }
+                    "--type" => {
+                        filters.ioc_type = Some(val().ok_or("`--type` needs a value")?.to_string());
+                        i += 2;
+                    }
+                    "--min-confidence" | "-m" => {
+                        let n = val().ok_or("`--min-confidence` needs a number")?;
+                        filters.min_confidence =
+                            Some(n.parse().map_err(|_| "`--min-confidence` must be 0-100")?);
                         i += 2;
                     }
                     other => return Err(format!("unknown option `{other}`")),
@@ -243,10 +259,7 @@ fn parse_query(q: &str) -> Result<Request, String> {
             }
             Ok(Request::Collect {
                 entity: ThreatEntity::new(name.to_string(), crate::parse_kind(kind)),
-                filters: Filters {
-                    max_results: limit,
-                    ..Filters::default()
-                },
+                filters,
             })
         }
         Some(_) => Ok(Request::Enrich(RawIoc::new(q.trim()))),

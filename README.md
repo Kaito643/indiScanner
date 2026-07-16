@@ -111,6 +111,10 @@ cargo run -- download <sha256> --extract          # also unpack the binary
 # Collect a family and pull every sample it turns up
 cargo run -- collect AgentTesla --download --samples-dir samples
 
+# Filter results by tag / type / confidence (applied after consensus scoring)
+cargo run -- collect ransomware --type sha256 --min-confidence 80
+cargo run -- collect ransomware --type sha256 --download   # ransomware samples
+
 # List the active sources and their capabilities
 cargo run -- sources
 

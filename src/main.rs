@@ -45,6 +45,15 @@ enum Command {
         /// Cap results per source (default: each source's API maximum).
         #[arg(short, long)]
         limit: Option<usize>,
+        /// Keep only indicators with a tag containing this text (e.g. ransomware).
+        #[arg(long)]
+        tag: Option<String>,
+        /// Keep only indicators of this type (e.g. sha256, ipv4, url).
+        #[arg(long = "type")]
+        ioc_type: Option<String>,
+        /// Keep only indicators with consensus confidence >= N.
+        #[arg(long)]
+        min_confidence: Option<u8>,
         /// After collecting, download every SHA-256 sample found.
         #[arg(long)]
         download: bool,
@@ -125,6 +134,9 @@ async fn main() -> anyhow::Result<()> {
             target,
             kind,
             limit,
+            tag,
+            ioc_type,
+            min_confidence,
             download,
             extract,
             samples_dir,
@@ -133,6 +145,9 @@ async fn main() -> anyhow::Result<()> {
                 entity: ThreatEntity::new(target.clone(), parse_kind(kind)),
                 filters: Filters {
                     max_results: *limit,
+                    tag: tag.clone(),
+                    ioc_type: ioc_type.clone(),
+                    min_confidence: *min_confidence,
                     ..Filters::default()
                 },
             },

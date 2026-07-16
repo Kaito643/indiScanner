@@ -47,8 +47,13 @@ impl Engine {
         }
     }
 
-    /// Run a request end-to-end: route → fan out (cache + rate limit) → aggregate.
+    /// Run a request end-to-end: route → fan out (cache + rate limit) →
+    /// aggregate → apply a Collect request's result filters (tag/type/confidence).
     pub async fn run(&self, request: Request) -> Result<Vec<Indicator>> {
+        let filters = match &request {
+            Request::Collect { filters, .. } => Some(filters.clone()),
+            _ => None,
+        };
         let observations = router::dispatch(
             &self.sources,
             &request,
@@ -57,7 +62,11 @@ impl Engine {
             &self.limiter,
         )
         .await;
-        Ok(aggregate::aggregate(observations, &self.config.weights))
+        let mut indicators = aggregate::aggregate(observations, &self.config.weights);
+        if let Some(f) = filters {
+            indicators.retain(|ind| f.keeps(ind));
+        }
+        Ok(indicators)
     }
 
     /// Download raw malware samples for the given hashes into `dir`, optionally
