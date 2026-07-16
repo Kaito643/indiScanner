@@ -7,6 +7,7 @@
 use super::{Capability, Operation, ThreatSource};
 use crate::model::indicator::{IndicatorType, Observation};
 use crate::model::request::RawIoc;
+use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
 use async_trait::async_trait;
 use log::{debug, warn};
@@ -28,7 +29,7 @@ impl AbuseIpdb {
             .ok()
             .filter(|k| !k.is_empty())?;
         Some(Self {
-            client: Client::new(),
+            client: http_client(),
             api_key,
         })
     }
@@ -74,14 +75,14 @@ impl ThreatSource for AbuseIpdb {
         }
         debug!("AbuseIPDB check: {}", ioc.value);
 
-        let http = self
-            .client
-            .get(API)
-            .header("Key", &self.api_key)
-            .header("Accept", "application/json")
-            .query(&[("ipAddress", ioc.value.as_str()), ("maxAgeInDays", "90")])
-            .send()
-            .await?;
+        let http = send_with_retry(
+            self.client
+                .get(API)
+                .header("Key", &self.api_key)
+                .header("Accept", "application/json")
+                .query(&[("ipAddress", ioc.value.as_str()), ("maxAgeInDays", "90")]),
+        )
+        .await?;
 
         if !http.status().is_success() {
             warn!("AbuseIPDB HTTP {}", http.status());

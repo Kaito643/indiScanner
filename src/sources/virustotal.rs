@@ -9,6 +9,7 @@
 use super::{Capability, Operation, ThreatSource};
 use crate::model::indicator::{IndicatorType, Observation};
 use crate::model::request::RawIoc;
+use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
 use async_trait::async_trait;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -31,7 +32,7 @@ impl VirusTotal {
     pub fn from_env() -> Option<Self> {
         let api_key = env::var("VT_API_KEY").ok().filter(|k| !k.is_empty())?;
         Some(Self {
-            client: Client::new(),
+            client: http_client(),
             api_key,
         })
     }
@@ -185,12 +186,12 @@ impl ThreatSource for VirusTotal {
         };
         debug!("VirusTotal GET {path}");
 
-        let http = self
-            .client
-            .get(format!("{API}/{path}"))
-            .header("x-apikey", &self.api_key)
-            .send()
-            .await?;
+        let http = send_with_retry(
+            self.client
+                .get(format!("{API}/{path}"))
+                .header("x-apikey", &self.api_key),
+        )
+        .await?;
 
         match http.status() {
             s if s.is_success() => {}

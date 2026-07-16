@@ -7,7 +7,7 @@ use std::collections::HashMap;
 /// Group observations by `(value, type)`, then build one [`Indicator`] per group
 /// with a consensus score, a unioned tag set, and all contributing observations
 /// retained for provenance. Output order follows first appearance of each group.
-pub fn aggregate(observations: Vec<Observation>) -> Vec<Indicator> {
+pub fn aggregate(observations: Vec<Observation>, weights: &HashMap<String, f64>) -> Vec<Indicator> {
     let mut order: Vec<(String, IndicatorType)> = Vec::new();
     let mut groups: HashMap<(String, IndicatorType), Vec<Observation>> = HashMap::new();
 
@@ -22,7 +22,7 @@ pub fn aggregate(observations: Vec<Observation>) -> Vec<Indicator> {
     let mut indicators = Vec::with_capacity(order.len());
     for key in order {
         let obs = groups.remove(&key).expect("key came from the same map");
-        let confidence = score::consensus(&obs);
+        let confidence = score::consensus(&obs, weights);
 
         let mut tags: Vec<String> = Vec::new();
         for o in &obs {
@@ -61,7 +61,7 @@ mod tests {
             obs("1.2.3.4", IndicatorType::IPv4, "B", 60, &["botnet"]),
             obs("evil.com", IndicatorType::Domain, "A", 50, &["phish"]),
         ];
-        let out = aggregate(input);
+        let out = aggregate(input, &HashMap::new());
         assert_eq!(out.len(), 2);
 
         let ip = &out[0];

@@ -53,6 +53,6 @@ impl Engine {
             &self.limiter,
         )
         .await;
-        Ok(aggregate::aggregate(observations))
+        Ok(aggregate::aggregate(observations, &self.config.weights))
     }
 }
