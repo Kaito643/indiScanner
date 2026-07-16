@@ -3,7 +3,7 @@
 use super::{Capability, Operation, ThreatSource};
 use crate::model::entity::ThreatEntity;
 use crate::model::indicator::{IndicatorType, Observation};
-use crate::model::request::RawIoc;
+use crate::model::request::{Filters, RawIoc};
 use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -164,9 +164,20 @@ impl ThreatSource for URLhaus {
         }
     }
 
-    async fn search(&self, entity: &ThreatEntity) -> Result<Vec<Observation>> {
+    async fn search(&self, entity: &ThreatEntity, filters: &Filters) -> Result<Vec<Observation>> {
         debug!("URLhaus tag search: {}", entity.name);
-        self.post_urls(TAG_API, &[("tag", entity.name.as_str())])
-            .await
+        // The tag endpoint takes no limit parameter and serves at most 1000
+        // rows, so any user cap below that is applied client-side.
+        let cap = super::search_cap(filters, 1000);
+        let mut obs = self
+            .post_urls(TAG_API, &[("tag", entity.name.as_str())])
+            .await?;
+        if obs.len() > cap {
+            warn!("URLhaus: truncating {} results to --limit {cap}", obs.len());
+            obs.truncate(cap);
+        } else {
+            super::warn_if_capped("URLhaus", obs.len(), 1000);
+        }
+        Ok(obs)
     }
 }

@@ -40,7 +40,7 @@ pub async fn dispatch(
             flatten(join_all(futures).await)
         }
 
-        Request::Collect { entity, .. } => {
+        Request::Collect { entity, filters } => {
             // Expand aliases into concrete entities (one search per term).
             let terms = config.resolve_aliases(&entity.name);
             info!("Collecting '{}' via terms: {:?}", entity.name, terms);
@@ -53,7 +53,7 @@ pub async fn dispatch(
             for source in sources {
                 if source.capabilities().supports(Operation::Search) {
                     for ent in &entities {
-                        futures.push(search_cached(source.as_ref(), ent, cache, limiter));
+                        futures.push(search_cached(source.as_ref(), ent, filters, cache, limiter));
                     }
                 }
             }
@@ -91,15 +91,21 @@ async fn lookup_cached(
 async fn search_cached(
     source: &dyn ThreatSource,
     entity: &ThreatEntity,
+    filters: &crate::model::request::Filters,
     cache: &Cache,
     limiter: &RateLimiter,
 ) -> Vec<Observation> {
-    let key = format!("{}|search|{}", source.name(), entity.name);
+    // The limit is part of the key: a run capped at 10 must not satisfy a
+    // later uncapped run from cache.
+    let limit = filters
+        .max_results
+        .map_or("max".to_string(), |n| n.to_string());
+    let key = format!("{}|search|{}|{limit}", source.name(), entity.name);
     if let Some(hit) = cache.get(&key) {
         return hit;
     }
     limiter.acquire(source.name()).await;
-    match source.search(entity).await {
+    match source.search(entity, filters).await {
         Ok(obs) => {
             cache.put(&key, &obs);
             obs
