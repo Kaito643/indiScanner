@@ -1,6 +1,8 @@
 //! Indicator values, the raw per-source [`Observation`], and the merged,
 //! consensus-scored [`Indicator`].
 
+use super::attack::AttackPattern;
+use super::relationship::Relationship;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -71,6 +73,14 @@ pub struct Observation {
     /// Free-form extra context keyed by field name (malware family, ASN, country, ...).
     #[serde(default)]
     pub context: BTreeMap<String, String>,
+    /// Edges this source asserts between the observed value and other
+    /// indicators (e.g. a host `Hosts` the URLs it serves).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub relationships: Vec<Relationship>,
+    /// ATT&CK techniques this source asserts directly (sandbox verdicts);
+    /// tag-derived techniques are added on top at aggregation.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub attack_patterns: Vec<AttackPattern>,
 }
 
 impl Observation {
@@ -90,6 +100,8 @@ impl Observation {
             last_seen: None,
             tags: Vec::new(),
             context: BTreeMap::new(),
+            relationships: Vec::new(),
+            attack_patterns: Vec::new(),
         }
     }
 
@@ -111,6 +123,12 @@ pub struct Indicator {
     pub confidence: u8,
     /// Union of all tags across observations.
     pub tags: Vec<String>,
+    /// ATT&CK techniques derived from the unioned tags (IOA layer).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub attack_patterns: Vec<AttackPattern>,
+    /// Union of all relationship edges asserted across observations.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub relationships: Vec<Relationship>,
     /// Every raw claim that contributed to this indicator (provenance).
     pub observations: Vec<Observation>,
 }

@@ -3,7 +3,7 @@
 use super::{Capability, Operation, ThreatSource};
 use crate::model::entity::ThreatEntity;
 use crate::model::indicator::{IndicatorType, Observation};
-use crate::model::request::RawIoc;
+use crate::model::request::{Filters, RawIoc};
 use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -151,9 +151,14 @@ impl ThreatSource for ThreatFox {
             .await
     }
 
-    async fn search(&self, entity: &ThreatEntity) -> Result<Vec<Observation>> {
-        debug!("ThreatFox taginfo: {}", entity.name);
-        self.query(json!({ "query": "taginfo", "tag": entity.name, "limit": 100 }))
-            .await
+    async fn search(&self, entity: &ThreatEntity, filters: &Filters) -> Result<Vec<Observation>> {
+        // ThreatFox taginfo takes a limit parameter, maximum 1000.
+        let cap = super::search_cap(filters, 1000);
+        debug!("ThreatFox taginfo: {} (limit {cap})", entity.name);
+        let obs = self
+            .query(json!({ "query": "taginfo", "tag": entity.name, "limit": cap }))
+            .await?;
+        super::warn_if_capped("ThreatFox", obs.len(), cap);
+        Ok(obs)
     }
 }
