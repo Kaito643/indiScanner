@@ -35,7 +35,7 @@ confidence scoring and clean STIX 2.1 / MISP export.
 | --- | --- | --- | --- |
 | ThreatFox (abuse.ch) | IOCs | lookup + search | ✅ |
 | URLhaus (abuse.ch) | Malicious URLs | lookup + search | ✅ |
-| MalwareBazaar (abuse.ch) | Malware samples | lookup + search | ✅ |
+| MalwareBazaar (abuse.ch) | Malware samples | lookup + search + **download** | ✅ |
 | AlienVault OTX | Open Threat Exchange | lookup | ✅ |
 | AbuseIPDB | IP reputation | lookup | ✅ |
 | VirusTotal | Multi-engine verdicts | lookup | ✅ |
@@ -87,9 +87,21 @@ cargo run -- collect LockBit --kind actor
 # Output formats: json (default) | csv | stix | misp
 cargo run -- enrich 1.2.3.4 --output stix
 
+# Download the raw malware sample for a hash (password-protected zip)
+cargo run -- download <sha256> --dir samples
+cargo run -- download <sha256> --extract          # also unpack the binary
+
+# Collect a family and pull every sample it turns up
+cargo run -- collect AgentTesla --download --samples-dir samples
+
 # List the active sources and their capabilities
 cargo run -- sources
 ```
+
+> **Handling samples safely.** Downloaded files are live malware. They arrive as
+> AES-encrypted zips (password `infected`, the abuse.ch convention) so nothing
+> executes by accident; only `--extract` unpacks the binary, and you should do
+> that only inside an isolated analysis VM. The `samples/` directory is gitignored.
 
 Copy `.env.example` to `.env` and add API keys:
 

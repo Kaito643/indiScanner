@@ -6,8 +6,11 @@
 //! returned observations into consensus-scored indicators (see [`aggregate`]).
 
 mod aggregate;
+mod download;
 mod router;
 mod score;
+
+pub use download::{DownloadReport, Outcome};
 
 use crate::config::Config;
 use crate::model::indicator::Indicator;
@@ -15,6 +18,7 @@ use crate::model::request::Request;
 use crate::sources::ThreatSource;
 use crate::util::{Cache, RateLimiter};
 use anyhow::Result;
+use std::path::Path;
 
 /// The orchestrator: holds the active sources, config, cache, and rate limiter.
 pub struct Engine {
@@ -54,5 +58,16 @@ impl Engine {
         )
         .await;
         Ok(aggregate::aggregate(observations, &self.config.weights))
+    }
+
+    /// Download raw malware samples for the given hashes into `dir`, optionally
+    /// extracting each from its password-protected archive.
+    pub async fn download(
+        &self,
+        hashes: &[String],
+        dir: &Path,
+        extract: bool,
+    ) -> Vec<DownloadReport> {
+        download::download(&self.sources, hashes, dir, extract, &self.limiter).await
     }
 }

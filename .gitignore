@@ -21,3 +21,8 @@ build/
 
 # ThreatHarvester response cache
 .th-cache/
+
+# Downloaded malware samples — never commit live malware
+/samples/
+*.elf
+

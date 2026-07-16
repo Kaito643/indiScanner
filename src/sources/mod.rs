@@ -120,6 +120,20 @@ pub enum Operation {
     Search,
     /// Pull a bulk feed.
     Feed,
+    /// Fetch the raw malware sample for a hash.
+    Download,
+}
+
+/// A downloaded malware sample.
+pub struct Sample {
+    /// The raw bytes as served by the source.
+    pub bytes: Vec<u8>,
+    /// True when `bytes` are a password-protected archive (abuse.ch ships
+    /// samples as ZIPs with the password `infected`, so live malware never
+    /// lands unpacked). A raw binary would set this to false.
+    pub archived: bool,
+    /// Which source served it.
+    pub source: &'static str,
 }
 
 /// What a source can do — matched against a request during routing.
@@ -159,6 +173,12 @@ pub trait ThreatSource: Send + Sync {
     /// Enrichment: gather observations about a single known IOC.
     async fn lookup(&self, _ioc: &RawIoc, _ty: &IndicatorType) -> Result<Vec<Observation>> {
         Ok(Vec::new())
+    }
+
+    /// Fetch the raw malware sample for a SHA-256, if this source serves files.
+    /// `None` means "this source doesn't have it" (not an error).
+    async fn fetch_sample(&self, _sha256: &str) -> Result<Option<Sample>> {
+        Ok(None)
     }
 
     /// Collection: gather observations related to a threat entity, honoring
