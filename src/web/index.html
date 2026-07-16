@@ -18,7 +18,7 @@
   input:focus, select:focus { outline:1px solid var(--accent); }
   button { background:var(--accent); border-color:var(--accent); cursor:pointer; font-weight:600; }
   button:hover { filter:brightness(1.1); }
-  #kindWrap, #limitWrap { display:none; }
+  #kindWrap, #limitWrap, #tagWrap, #typeWrap, #minWrap { display:none; }
   .status { color:var(--dim); font-size:13px; margin-left:auto; }
   main { display:grid; grid-template-columns: 1fr 1fr; gap:0; height: calc(100vh - 128px); }
   .col { overflow:auto; }
@@ -58,7 +58,21 @@
       <option value="campaign">campaign</option>
     </select>
   </span>
-  <span id="limitWrap"><input id="limit" type="number" min="1" placeholder="limit" style="min-width:90px"></span>
+  <span id="limitWrap"><input id="limit" type="number" min="1" placeholder="limit" style="min-width:80px"></span>
+  <span id="tagWrap"><input id="tag" placeholder="tag e.g. ransomware" style="min-width:150px"></span>
+  <span id="typeWrap">
+    <select id="type">
+      <option value="">any type</option>
+      <option value="sha256">sha256</option>
+      <option value="md5">md5</option>
+      <option value="sha1">sha1</option>
+      <option value="ipv4">ipv4</option>
+      <option value="domain">domain</option>
+      <option value="url">url</option>
+      <option value="btc">btc</option>
+    </select>
+  </span>
+  <span id="minWrap"><input id="minc" type="number" min="0" max="100" placeholder="min conf" style="min-width:90px"></span>
   <button id="run">Run</button>
   <span class="status" id="status">ready</span>
 </div>
@@ -84,9 +98,8 @@ let results = [], selected = -1, network = null;
 
 modeSel.onchange = () => {
   const collect = modeSel.value === 'collect';
-  $('kindWrap').style.display = collect ? '' : 'none';
-  $('limitWrap').style.display = collect ? '' : 'none';
-  qIn.placeholder = collect ? 'LockBit  ·  Emotet  ·  Lazarus' : '1.0.164.165  ·  a hash  ·  a wallet';
+  ['kindWrap','limitWrap','tagWrap','typeWrap','minWrap'].forEach(id => $(id).style.display = collect ? '' : 'none');
+  qIn.placeholder = collect ? 'LockBit  ·  Emotet  ·  ransomware' : '1.0.164.165  ·  a hash  ·  a wallet';
 };
 $('run').onclick = runQuery;
 qIn.addEventListener('keydown', e => { if (e.key === 'Enter') runQuery(); });
@@ -107,6 +120,9 @@ async function runQuery() {
     } else {
       const p = new URLSearchParams({ entity: q, kind: $('kind').value });
       if ($('limit').value) p.set('limit', $('limit').value);
+      if ($('tag').value.trim()) p.set('tag', $('tag').value.trim());
+      if ($('type').value) p.set('type', $('type').value);
+      if ($('minc').value) p.set('min_confidence', $('minc').value);
       res = await fetch('/api/collect?' + p.toString());
     }
     if (!res.ok) { setStatus('error: ' + (await res.text())); return; }
