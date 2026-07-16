@@ -16,6 +16,7 @@ pub mod abuseipdb;
 pub mod greynoise;
 pub mod malwarebazaar;
 pub mod otx;
+pub mod ransomwhere;
 pub mod shodan;
 pub mod threatfox;
 pub mod urlhaus;
@@ -52,6 +53,9 @@ pub fn from_config(config: &crate::config::Config) -> Vec<Box<dyn ThreatSource>>
     }
     if toggles.malwarebazaar {
         sources.push(Box::new(malwarebazaar::MalwareBazaar::new()));
+    }
+    if toggles.ransomwhere {
+        sources.push(Box::new(ransomwhere::Ransomwhere::new()));
     }
     if toggles.otx {
         match otx::AlienVaultOTX::from_env() {

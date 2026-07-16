@@ -67,6 +67,22 @@ fn pattern_for(ty: &IndicatorType, value: &str) -> Option<String> {
         IndicatorType::Sha512 => format!("[file:hashes.'SHA-512' = '{v}']"),
         IndicatorType::Ssdeep => format!("[file:hashes.'SSDEEP' = '{v}']"),
         IndicatorType::Email => format!("[email-addr:value = '{v}']"),
+        // STIX 2.1 has no standard SCO for wallets; use a custom x- object type.
+        IndicatorType::Btc => {
+            format!(
+                "[x-cryptocurrency-addr:value = '{v}' AND x-cryptocurrency-addr:currency = 'BTC']"
+            )
+        }
+        IndicatorType::Eth => {
+            format!(
+                "[x-cryptocurrency-addr:value = '{v}' AND x-cryptocurrency-addr:currency = 'ETH']"
+            )
+        }
+        IndicatorType::Xmr => {
+            format!(
+                "[x-cryptocurrency-addr:value = '{v}' AND x-cryptocurrency-addr:currency = 'XMR']"
+            )
+        }
         IndicatorType::Other(_) => return None,
     })
 }

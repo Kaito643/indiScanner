@@ -45,6 +45,9 @@ fn misp_type(ty: &IndicatorType) -> Option<(&'static str, &'static str)> {
         IndicatorType::Sha512 => ("sha512", "Payload delivery"),
         IndicatorType::Ssdeep => ("ssdeep", "Payload delivery"),
         IndicatorType::Email => ("email-src", "Payload delivery"),
-        IndicatorType::Other(_) => return None,
+        IndicatorType::Btc => ("btc", "Financial fraud"),
+        IndicatorType::Xmr => ("xmr", "Financial fraud"),
+        // MISP has no native ETH attribute type; excluded rather than mislabeled.
+        IndicatorType::Eth | IndicatorType::Other(_) => return None,
     })
 }

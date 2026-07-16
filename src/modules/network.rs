@@ -74,7 +74,8 @@ impl IocModule for NetworkModule {
 }
 
 /// A conservative hostname check: dotted, ASCII labels, valid label chars.
-fn is_domain(v: &str) -> bool {
+/// Shared with the email module for validating the domain part of an address.
+pub(super) fn is_domain(v: &str) -> bool {
     if v.contains(char::is_whitespace) || !v.contains('.') {
         return false;
     }
