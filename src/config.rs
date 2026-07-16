@@ -40,6 +40,7 @@ pub struct SourceToggles {
     pub malwarebazaar: bool,
     pub otx: bool,
     pub abuseipdb: bool,
+    pub virustotal: bool,
 }
 
 impl Default for SourceToggles {
@@ -50,6 +51,7 @@ impl Default for SourceToggles {
             malwarebazaar: true,
             otx: true,
             abuseipdb: true,
+            virustotal: true,
         }
     }
 }
@@ -79,11 +81,17 @@ impl Default for CacheConfig {
 pub struct RateLimitConfig {
     /// Minimum milliseconds between consecutive requests to the same source.
     pub default_ms: u64,
+    /// Per-source overrides (lowercase source name → ms). Seeded with
+    /// VirusTotal's free-tier pace (4 requests/minute).
+    pub per_source: HashMap<String, u64>,
 }
 
 impl Default for RateLimitConfig {
     fn default() -> Self {
-        Self { default_ms: 1000 }
+        Self {
+            default_ms: 1000,
+            per_source: HashMap::from([("virustotal".to_string(), 15_000)]),
+        }
     }
 }
 
@@ -159,5 +167,16 @@ mod tests {
         assert!(!c.sources.urlhaus);
         assert!(c.sources.threatfox); // untouched default
         assert!(c.cache.enabled); // whole [cache] section defaulted
+        assert_eq!(c.ratelimit.per_source.get("virustotal"), Some(&15_000)); // seeded
+    }
+
+    #[test]
+    fn per_source_ratelimit_parses_from_toml() {
+        let c: Config = toml::from_str(
+            "[ratelimit]\ndefault_ms = 500\n[ratelimit.per_source]\nshodan = 2000\n",
+        )
+        .unwrap();
+        assert_eq!(c.ratelimit.default_ms, 500);
+        assert_eq!(c.ratelimit.per_source.get("shodan"), Some(&2000));
     }
 }

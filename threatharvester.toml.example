@@ -9,6 +9,7 @@ urlhaus = true
 malwarebazaar = true
 otx = true
 abuseipdb = true
+virustotal = true
 
 # Cross-run disk cache. Avoids re-hitting rate-limited APIs.
 [cache]
@@ -19,6 +20,11 @@ dir = ".th-cache"
 # Per-source rate limiting.
 [ratelimit]
 default_ms = 1000   # minimum ms between consecutive requests to the same source
+
+# Overrides per source (lowercase name -> ms). VirusTotal's free tier is
+# 4 requests/minute, so it defaults to 15000 even without this section.
+[ratelimit.per_source]
+virustotal = 15000
 
 # Entity name -> search terms. The name itself is always included automatically.
 [aliases]

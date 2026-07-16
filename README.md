@@ -38,7 +38,8 @@ confidence scoring and clean STIX 2.1 / MISP export.
 | MalwareBazaar (abuse.ch) | Malware samples | lookup + search | ✅ |
 | AlienVault OTX | Open Threat Exchange | lookup | ✅ |
 | AbuseIPDB | IP reputation | lookup | ✅ |
-| VirusTotal, MISP, Pulsedive | mixed | — | planned |
+| VirusTotal | Multi-engine verdicts | lookup | ✅ |
+| MISP, Pulsedive, GreyNoise, Shodan | mixed | — | planned |
 
 ## Roadmap
 
@@ -49,6 +50,7 @@ confidence scoring and clean STIX 2.1 / MISP export.
 - [x] **Phase 4** — Per-source caching + rate limiting + config file.
 - [x] **Phase 5** — STIX 2.1 / MISP export.
 - [x] **Phase 6** — `file` module (hash digests + ssdeep) + MalwareBazaar.
+- [x] **Phase 7** — VirusTotal v3 + per-source rate limits.
 - [ ] **Future** — Indicators of Attack (IOA): relationship graph + MITRE ATT&CK mapping.
 
 ## Build & Run
@@ -77,6 +79,7 @@ Copy `.env.example` to `.env` and add API keys:
 - `ABUSE_CH_AUTH_KEY` — required for ThreatFox + URLhaus + MalwareBazaar (free from <https://auth.abuse.ch/>)
 - `OTX_API_KEY` — enables AlienVault OTX
 - `ABUSEIPDB_API_KEY` — enables AbuseIPDB IP reputation
+- `VT_API_KEY` — enables VirusTotal (free tier is 4 req/min; paced automatically)
 
 ## Configuration
 
