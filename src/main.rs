@@ -1,5 +1,7 @@
 //! ThreatHarvester CLI — a thin front-end over the `threat_harvester` library crate.
 
+mod tui;
+
 use clap::{Parser, Subcommand};
 use std::path::Path;
 use threat_harvester::config::Config;
@@ -66,6 +68,8 @@ enum Command {
     },
     /// List the active sources and what each can answer.
     Sources,
+    /// Launch the interactive terminal UI.
+    Tui,
 }
 
 #[tokio::main]
@@ -96,6 +100,10 @@ async fn main() -> anyhow::Result<()> {
             print_download_reports(&reports, false);
             return Ok(());
         }
+        Command::Tui => {
+            let engine = Engine::new(sources::from_config(&config), config);
+            return tui::run(engine).await;
+        }
         _ => {}
     }
 
@@ -119,7 +127,9 @@ async fn main() -> anyhow::Result<()> {
             },
             download.then(|| (samples_dir.clone(), *extract)),
         ),
-        Command::Sources | Command::Download { .. } => unreachable!("handled above"),
+        Command::Sources | Command::Download { .. } | Command::Tui => {
+            unreachable!("handled above")
+        }
     };
 
     let format: Format = cli.output.parse()?;

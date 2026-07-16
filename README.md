@@ -96,7 +96,19 @@ cargo run -- collect AgentTesla --download --samples-dir samples
 
 # List the active sources and their capabilities
 cargo run -- sources
+
+# Interactive terminal UI (query bar, scored results, provenance, export/download)
+cargo run -- tui
 ```
+
+### Terminal UI
+
+`threatharvester tui` opens an interactive front end over the same engine: type
+`enrich <ioc>` or `collect <name> [--kind k] [--limit n]` in the query bar (or a
+bare value to enrich it), browse the consensus-scored indicators on the left, and
+read full per-source provenance, ATT&CK techniques, and relationship edges on the
+right. Keys: `i` or `/` to search, `j`/`k` to move, `e` to export the current set
+to `th-export.json`, `d` to download the selected SHA-256 sample, `q` to quit.
 
 > **Handling samples safely.** Downloaded files are live malware. They arrive as
 > AES-encrypted zips (password `infected`, the abuse.ch convention) so nothing
