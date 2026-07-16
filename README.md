@@ -63,9 +63,26 @@ confidence scoring and clean STIX 2.1 / MISP export.
       `CommunicatesWith` behaviour edges from detonation network IOCs.
 - [ ] **Future** — MISP integration (when an instance exists); Pulsedive.
 
+## Quick start (Windows)
+
+Launcher scripts wrap the toolchain setup and a one-time release build, so you
+don't retype the environment each time. After the first run (which builds), every
+launch is instant:
+
+```powershell
+.\th.ps1                 # open the interactive TUI (no args = TUI)
+.\th.ps1 serve           # start the web dashboard
+.\th.ps1 enrich 1.2.3.4  # any CLI subcommand, forwarded verbatim
+.\th.ps1 -Build ...      # force a rebuild first (after code changes)
+```
+
+Or just double-click **`tui.cmd`** (terminal UI) or **`serve.cmd`** (web dashboard;
+opens the browser automatically). Both call `th.ps1` under the hood.
+
 ## Build & Run
 
-Requires the [Rust toolchain](https://rustup.rs/) (`cargo`).
+Requires the [Rust toolchain](https://rustup.rs/) (`cargo`). The launcher scripts
+above do this for you; to run `cargo` directly:
 
 ```bash
 cargo build --release
