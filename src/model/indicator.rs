@@ -77,6 +77,10 @@ pub struct Observation {
     /// indicators (e.g. a host `Hosts` the URLs it serves).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub relationships: Vec<Relationship>,
+    /// ATT&CK techniques this source asserts directly (sandbox verdicts);
+    /// tag-derived techniques are added on top at aggregation.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub attack_patterns: Vec<AttackPattern>,
 }
 
 impl Observation {
@@ -97,6 +101,7 @@ impl Observation {
             tags: Vec::new(),
             context: BTreeMap::new(),
             relationships: Vec::new(),
+            attack_patterns: Vec::new(),
         }
     }
 

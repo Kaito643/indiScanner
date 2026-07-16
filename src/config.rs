@@ -50,6 +50,7 @@ pub struct SourceToggles {
     pub greynoise: bool,
     pub shodan: bool,
     pub ransomwhere: bool,
+    pub triage: bool,
 }
 
 impl Default for SourceToggles {
@@ -64,6 +65,7 @@ impl Default for SourceToggles {
             greynoise: true,
             shodan: true,
             ransomwhere: true,
+            triage: true,
         }
     }
 }

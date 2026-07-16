@@ -13,6 +13,7 @@ virustotal = true
 greynoise = true
 shodan = true
 ransomwhere = true
+triage = true
 
 # Cross-run disk cache. Avoids re-hitting rate-limited APIs.
 [cache]
