@@ -34,6 +34,10 @@ sha2 = "0.10"
 # (both pure-Rust) and skip the C-backed codecs (zstd/lzma/bzip2) the defaults
 # would pull in.
 zip = { version = "2.2", default-features = false, features = ["deflate", "aes-crypto"] }
+
+# Interactive terminal UI (`threatharvester tui`).
+ratatui = "0.29"
+crossterm = { version = "0.28", features = ["event-stream"] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 uuid = { version = "1", features = ["v5"] }
 
