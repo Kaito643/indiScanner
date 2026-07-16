@@ -41,6 +41,8 @@ pub struct SourceToggles {
     pub otx: bool,
     pub abuseipdb: bool,
     pub virustotal: bool,
+    pub greynoise: bool,
+    pub shodan: bool,
 }
 
 impl Default for SourceToggles {
@@ -52,6 +54,8 @@ impl Default for SourceToggles {
             otx: true,
             abuseipdb: true,
             virustotal: true,
+            greynoise: true,
+            shodan: true,
         }
     }
 }
@@ -151,6 +155,7 @@ mod tests {
     fn defaults_enable_all_sources_and_seed_aliases() {
         let c = Config::default();
         assert!(c.sources.threatfox && c.sources.abuseipdb && c.sources.malwarebazaar);
+        assert!(c.sources.greynoise && c.sources.shodan);
         assert!(c.aliases.contains_key("Lazarus"));
     }
 

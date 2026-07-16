@@ -39,7 +39,9 @@ confidence scoring and clean STIX 2.1 / MISP export.
 | AlienVault OTX | Open Threat Exchange | lookup | ✅ |
 | AbuseIPDB | IP reputation | lookup | ✅ |
 | VirusTotal | Multi-engine verdicts | lookup | ✅ |
-| MISP, Pulsedive, GreyNoise, Shodan | mixed | — | planned |
+| GreyNoise | Internet-scanner context | lookup | ✅ |
+| Shodan | Exposure / CVE context | lookup | ✅ |
+| MISP, Pulsedive | mixed | — | planned |
 
 ## Roadmap
 
@@ -51,6 +53,7 @@ confidence scoring and clean STIX 2.1 / MISP export.
 - [x] **Phase 5** — STIX 2.1 / MISP export.
 - [x] **Phase 6** — `file` module (hash digests + ssdeep) + MalwareBazaar.
 - [x] **Phase 7** — VirusTotal v3 + per-source rate limits.
+- [x] **Phase 8** — GreyNoise + Shodan (network enrichment context).
 - [ ] **Future** — Indicators of Attack (IOA): relationship graph + MITRE ATT&CK mapping.
 
 ## Build & Run
@@ -80,6 +83,8 @@ Copy `.env.example` to `.env` and add API keys:
 - `OTX_API_KEY` — enables AlienVault OTX
 - `ABUSEIPDB_API_KEY` — enables AbuseIPDB IP reputation
 - `VT_API_KEY` — enables VirusTotal (free tier is 4 req/min; paced automatically)
+- `GREYNOISE_API_KEY` — enables GreyNoise scanner context (free community key)
+- `SHODAN_API_KEY` — enables Shodan exposure/CVE context
 
 ## Configuration
 

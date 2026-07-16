@@ -10,6 +10,8 @@ malwarebazaar = true
 otx = true
 abuseipdb = true
 virustotal = true
+greynoise = true
+shodan = true
 
 # Cross-run disk cache. Avoids re-hitting rate-limited APIs.
 [cache]
