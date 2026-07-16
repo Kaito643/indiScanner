@@ -13,8 +13,10 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 pub mod abuseipdb;
+pub mod greynoise;
 pub mod malwarebazaar;
 pub mod otx;
+pub mod shodan;
 pub mod threatfox;
 pub mod urlhaus;
 pub mod virustotal;
@@ -67,6 +69,18 @@ pub fn from_config(config: &crate::config::Config) -> Vec<Box<dyn ThreatSource>>
         match virustotal::VirusTotal::from_env() {
             Some(vt) => sources.push(Box::new(vt)),
             None => log::warn!("VirusTotal disabled: VT_API_KEY not set."),
+        }
+    }
+    if toggles.greynoise {
+        match greynoise::GreyNoise::from_env() {
+            Some(g) => sources.push(Box::new(g)),
+            None => log::warn!("GreyNoise disabled: GREYNOISE_API_KEY not set."),
+        }
+    }
+    if toggles.shodan {
+        match shodan::Shodan::from_env() {
+            Some(s) => sources.push(Box::new(s)),
+            None => log::warn!("Shodan disabled: SHODAN_API_KEY not set."),
         }
     }
     sources
