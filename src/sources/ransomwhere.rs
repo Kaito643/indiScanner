@@ -12,6 +12,7 @@ use super::{Capability, Operation, ThreatSource};
 use crate::model::entity::ThreatEntity;
 use crate::model::indicator::{IndicatorType, Observation};
 use crate::model::request::RawIoc;
+use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
 use async_trait::async_trait;
 use log::{debug, info};
@@ -33,7 +34,7 @@ pub struct Ransomwhere {
 impl Ransomwhere {
     pub fn new() -> Self {
         Self {
-            client: Client::new(),
+            client: http_client(),
             entries: OnceCell::new(),
         }
     }
@@ -44,7 +45,9 @@ impl Ransomwhere {
             .entries
             .get_or_try_init(|| async {
                 info!("Ransomwhere: fetching full export");
-                let http = self.client.get(API).send().await?.error_for_status()?;
+                let http = send_with_retry(self.client.get(API))
+                    .await?
+                    .error_for_status()?;
                 let export = http.json::<Export>().await?;
                 debug!("Ransomwhere: {} entries loaded", export.result.len());
                 anyhow::Ok(export.result)

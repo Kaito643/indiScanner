@@ -38,6 +38,8 @@ enum Command {
         #[arg(short, long, default_value = "malware")]
         kind: String,
     },
+    /// List the active sources and what each can answer.
+    Sources,
 }
 
 #[tokio::main]
@@ -47,18 +49,23 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
+    let config = match &cli.config {
+        Some(path) => Config::from_path(path).unwrap_or_default(),
+        None => Config::load(),
+    };
+
     let request = match &cli.command {
         Command::Enrich { value } => Request::Enrich(RawIoc::new(value.clone())),
         Command::Collect { target, kind } => Request::Collect {
             entity: ThreatEntity::new(target.clone(), parse_kind(kind)),
             filters: Filters::default(),
         },
+        Command::Sources => {
+            print_sources(&sources::from_config(&config));
+            return Ok(());
+        }
     };
 
-    let config = match &cli.config {
-        Some(path) => Config::from_path(path).unwrap_or_default(),
-        None => Config::load(),
-    };
     let format: Format = cli.output.parse()?;
 
     let engine = Engine::new(sources::from_config(&config), config);
@@ -66,6 +73,32 @@ async fn main() -> anyhow::Result<()> {
 
     println!("{}", export::render(&indicators, format)?);
     Ok(())
+}
+
+/// Print a capability table for the sources that are enabled *and* credentialed
+/// (key-gated sources missing their key have already logged a warning and are
+/// absent here).
+fn print_sources(active: &[Box<dyn sources::ThreatSource>]) {
+    println!("{:<15} {:<45} OPERATIONS", "SOURCE", "IOC TYPES");
+    for source in active {
+        let caps = source.capabilities();
+        let types: Vec<&str> = caps.ioc_types.iter().map(|t| t.as_tag()).collect();
+        let ops: Vec<&str> = caps
+            .operations
+            .iter()
+            .map(|op| match op {
+                sources::Operation::Lookup => "lookup",
+                sources::Operation::Search => "search",
+                sources::Operation::Feed => "feed",
+            })
+            .collect();
+        println!(
+            "{:<15} {:<45} {}",
+            source.name(),
+            types.join(", "),
+            ops.join(", ")
+        );
+    }
 }
 
 fn parse_kind(kind: &str) -> EntityKind {

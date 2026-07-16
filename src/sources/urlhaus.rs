@@ -4,6 +4,7 @@ use super::{Capability, Operation, ThreatSource};
 use crate::model::entity::ThreatEntity;
 use crate::model::indicator::{IndicatorType, Observation};
 use crate::model::request::RawIoc;
+use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
 use async_trait::async_trait;
 use log::{debug, warn};
@@ -31,7 +32,7 @@ impl Default for URLhaus {
 impl URLhaus {
     pub fn new() -> Self {
         Self {
-            client: Client::new(),
+            client: http_client(),
             auth_key: super::abuse_ch_key(),
         }
     }
@@ -58,7 +59,7 @@ impl URLhaus {
     }
 
     async fn post_urls(&self, url: &str, form: &[(&str, &str)]) -> Result<Vec<Observation>> {
-        let http = self.authed(self.client.post(url).form(form)).send().await?;
+        let http = send_with_retry(self.authed(self.client.post(url).form(form))).await?;
         if !http.status().is_success() {
             warn!(
                 "URLhaus HTTP {}: {}",
@@ -133,14 +134,14 @@ impl ThreatSource for URLhaus {
         match ty {
             IndicatorType::Url => {
                 debug!("URLhaus url lookup: {}", ioc.value);
-                let http = self
-                    .authed(
+                let http = send_with_retry(
+                    self.authed(
                         self.client
                             .post(URL_API)
                             .form(&[("url", ioc.value.as_str())]),
-                    )
-                    .send()
-                    .await?;
+                    ),
+                )
+                .await?;
                 if !http.status().is_success() {
                     warn!(
                         "URLhaus HTTP {}: {}",

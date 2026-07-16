@@ -7,6 +7,7 @@
 use super::{Capability, Operation, ThreatSource};
 use crate::model::indicator::{IndicatorType, Observation};
 use crate::model::request::RawIoc;
+use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
 use async_trait::async_trait;
 use log::debug;
@@ -24,7 +25,7 @@ impl AlienVaultOTX {
     pub fn from_env() -> Option<Self> {
         let api_key = env::var("OTX_API_KEY").ok().filter(|k| !k.is_empty())?;
         Some(Self {
-            client: Client::new(),
+            client: http_client(),
             api_key,
         })
     }
@@ -99,14 +100,11 @@ impl ThreatSource for AlienVaultOTX {
         );
         debug!("OTX general lookup: {url}");
 
-        let general: General = self
-            .client
-            .get(&url)
-            .header("X-OTX-API-KEY", &self.api_key)
-            .send()
-            .await?
-            .json()
-            .await?;
+        let general: General =
+            send_with_retry(self.client.get(&url).header("X-OTX-API-KEY", &self.api_key))
+                .await?
+                .json()
+                .await?;
 
         let info = match general.pulse_info {
             Some(i) if i.count > 0 => i,

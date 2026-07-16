@@ -4,6 +4,7 @@ use super::{Capability, Operation, ThreatSource};
 use crate::model::entity::ThreatEntity;
 use crate::model::indicator::{IndicatorType, Observation};
 use crate::model::request::RawIoc;
+use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
 use async_trait::async_trait;
 use log::{debug, warn};
@@ -27,7 +28,7 @@ impl Default for ThreatFox {
 impl ThreatFox {
     pub fn new() -> Self {
         Self {
-            client: Client::new(),
+            client: http_client(),
             auth_key: super::abuse_ch_key(),
         }
     }
@@ -78,7 +79,7 @@ impl ThreatFox {
         if let Some(key) = &self.auth_key {
             req = req.header("Auth-Key", key);
         }
-        let http = req.send().await?;
+        let http = send_with_retry(req).await?;
         if !http.status().is_success() {
             warn!(
                 "ThreatFox HTTP {}: {}",

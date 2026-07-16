@@ -13,6 +13,7 @@
 use super::{Capability, Operation, ThreatSource};
 use crate::model::indicator::{IndicatorType, Observation};
 use crate::model::request::RawIoc;
+use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
 use async_trait::async_trait;
 use log::{debug, warn};
@@ -38,7 +39,7 @@ impl Shodan {
     pub fn from_env() -> Option<Self> {
         let api_key = env::var("SHODAN_API_KEY").ok().filter(|k| !k.is_empty())?;
         Some(Self {
-            client: Client::new(),
+            client: http_client(),
             api_key,
         })
     }
@@ -154,12 +155,12 @@ impl ThreatSource for Shodan {
         }
         debug!("Shodan GET host/{}", ioc.value);
 
-        let http = self
-            .client
-            .get(format!("{API}/shodan/host/{}", ioc.value))
-            .query(&[("key", self.api_key.as_str()), ("minify", "true")])
-            .send()
-            .await?;
+        let http = send_with_retry(
+            self.client
+                .get(format!("{API}/shodan/host/{}", ioc.value))
+                .query(&[("key", self.api_key.as_str()), ("minify", "true")]),
+        )
+        .await?;
 
         match http.status() {
             s if s.is_success() => {}

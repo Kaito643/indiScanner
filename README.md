@@ -81,6 +81,9 @@ cargo run -- collect LockBit --kind actor
 
 # Output formats: json (default) | csv | stix | misp
 cargo run -- enrich 1.2.3.4 --output stix
+
+# List the active sources and their capabilities
+cargo run -- sources
 ```
 
 Copy `.env.example` to `.env` and add API keys:
@@ -95,8 +98,10 @@ Copy `.env.example` to `.env` and add API keys:
 ## Configuration
 
 Optional `threatharvester.toml` (or `$TH_CONFIG`, or `--config <path>`) tunes source
-toggles, aliases, caching, and rate limits — see [`threatharvester.toml.example`](threatharvester.toml.example).
-With no config file, sensible defaults apply. Responses are cached under `.th-cache/`.
+toggles, aliases, caching, rate limits, and per-source reliability weights — see
+[`threatharvester.toml.example`](threatharvester.toml.example). With no config file,
+sensible defaults apply. Responses are cached under `.th-cache/`; transient HTTP
+failures (5xx, timeouts) are retried twice with backoff.
 
 ## Disclaimer
 

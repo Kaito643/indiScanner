@@ -4,7 +4,9 @@
 //! here if other modules start needing it.)
 
 pub mod cache;
+pub mod http;
 pub mod ratelimit;
 
 pub use cache::Cache;
+pub use http::{http_client, send_with_retry};
 pub use ratelimit::RateLimiter;

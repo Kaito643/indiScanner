@@ -15,6 +15,11 @@ pub struct Config {
     pub sources: SourceToggles,
     pub cache: CacheConfig,
     pub ratelimit: RateLimitConfig,
+    /// Per-source reliability weights in `0.0..=1.0` (lowercase source name →
+    /// weight). A source's weight scales both its own confidence claim and how
+    /// much its agreement boosts consensus. Unlisted sources weigh 1.0.
+    #[serde(default)]
+    pub weights: HashMap<String, f64>,
     /// Entity name → search terms (aliases). The name itself is always included.
     #[serde(default = "default_aliases")]
     pub aliases: HashMap<String, Vec<String>>,
@@ -26,6 +31,7 @@ impl Default for Config {
             sources: SourceToggles::default(),
             cache: CacheConfig::default(),
             ratelimit: RateLimitConfig::default(),
+            weights: HashMap::new(),
             aliases: default_aliases(),
         }
     }
@@ -175,6 +181,13 @@ mod tests {
         assert!(c.sources.threatfox); // untouched default
         assert!(c.cache.enabled); // whole [cache] section defaulted
         assert_eq!(c.ratelimit.per_source.get("virustotal"), Some(&15_000)); // seeded
+    }
+
+    #[test]
+    fn weights_parse_from_toml_and_default_empty() {
+        let c: Config = toml::from_str("[weights]\ngreynoise = 0.6\n").unwrap();
+        assert_eq!(c.weights.get("greynoise"), Some(&0.6));
+        assert!(Config::default().weights.is_empty());
     }
 
     #[test]

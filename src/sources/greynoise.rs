@@ -10,6 +10,7 @@
 use super::{Capability, Operation, ThreatSource};
 use crate::model::indicator::{IndicatorType, Observation};
 use crate::model::request::RawIoc;
+use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
 use async_trait::async_trait;
 use log::{debug, warn};
@@ -31,7 +32,7 @@ impl GreyNoise {
             .ok()
             .filter(|k| !k.is_empty())?;
         Some(Self {
-            client: Client::new(),
+            client: http_client(),
             api_key,
         })
     }
@@ -102,12 +103,12 @@ impl ThreatSource for GreyNoise {
         }
         debug!("GreyNoise GET {}", ioc.value);
 
-        let http = self
-            .client
-            .get(format!("{API}/{}", ioc.value))
-            .header("key", &self.api_key)
-            .send()
-            .await?;
+        let http = send_with_retry(
+            self.client
+                .get(format!("{API}/{}", ioc.value))
+                .header("key", &self.api_key),
+        )
+        .await?;
 
         match http.status() {
             s if s.is_success() => {}

@@ -29,6 +29,13 @@ default_ms = 1000   # minimum ms between consecutive requests to the same source
 [ratelimit.per_source]
 virustotal = 15000
 
+# Per-source reliability weights (lowercase name -> 0.0..=1.0; unlisted = 1.0).
+# A weight scales both a source's own confidence claim and how much its
+# agreement boosts the consensus score.
+# [weights]
+# greynoise = 0.8
+# shodan = 0.6
+
 # Entity name -> search terms. The name itself is always included automatically.
 [aliases]
 Lazarus = ["Hidden Cobra", "Zinc", "Lazarus"]
