@@ -3,6 +3,7 @@
 use super::{Capability, Operation, ThreatSource};
 use crate::model::entity::ThreatEntity;
 use crate::model::indicator::{IndicatorType, Observation};
+use crate::model::relationship::{RelationKind, Relationship};
 use crate::model::request::{Filters, RawIoc};
 use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
@@ -158,8 +159,19 @@ impl ThreatSource for URLhaus {
             }
             _ => {
                 debug!("URLhaus host lookup: {}", ioc.value);
-                self.post_urls(HOST_API, &[("host", ioc.value.as_str())])
-                    .await
+                let mut obs = self
+                    .post_urls(HOST_API, &[("host", ioc.value.as_str())])
+                    .await?;
+                // The queried host serves each returned URL — a graph edge,
+                // not just a listing.
+                for o in &mut obs {
+                    o.relationships.push(Relationship::new(
+                        ioc.value.clone(),
+                        o.value.clone(),
+                        RelationKind::Hosts,
+                    ));
+                }
+                Ok(obs)
             }
         }
     }

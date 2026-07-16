@@ -56,7 +56,9 @@ confidence scoring and clean STIX 2.1 / MISP export.
 - [x] **Phase 7** — VirusTotal v3 + per-source rate limits.
 - [x] **Phase 8** — GreyNoise + Shodan (network enrichment context).
 - [x] **Phase 9** — `email` + `crypto` modules (BTC/ETH/XMR, checksum-validated) + Ransomwhere.
-- [ ] **Future** — Indicators of Attack (IOA): relationship graph + MITRE ATT&CK mapping.
+- [x] **IOA groundwork** — MITRE ATT&CK techniques derived from source tags; relationship
+      edges (host→URL, sample→sibling hashes) carried on observations and indicators.
+- [ ] **Future** — IOA behaviour edges from sandbox sources (Triage / VT behaviour).
 
 ## Build & Run
 

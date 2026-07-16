@@ -1,7 +1,9 @@
 //! Aggregation: fold raw [`Observation`]s into deduplicated, scored [`Indicator`]s.
 
 use super::score;
+use crate::model::attack;
 use crate::model::indicator::{Indicator, IndicatorType, Observation};
+use crate::model::relationship::Relationship;
 use std::collections::HashMap;
 
 /// Group observations by `(value, type)`, then build one [`Indicator`] per group
@@ -25,19 +27,28 @@ pub fn aggregate(observations: Vec<Observation>, weights: &HashMap<String, f64>)
         let confidence = score::consensus(&obs, weights);
 
         let mut tags: Vec<String> = Vec::new();
+        let mut relationships: Vec<Relationship> = Vec::new();
         for o in &obs {
             for t in &o.tags {
                 if !tags.contains(t) {
                     tags.push(t.clone());
                 }
             }
+            for r in &o.relationships {
+                if !relationships.contains(r) {
+                    relationships.push(r.clone());
+                }
+            }
         }
+        let attack_patterns = attack::from_tags(&tags);
 
         indicators.push(Indicator {
             value: key.0,
             indicator_type: key.1,
             confidence,
             tags,
+            attack_patterns,
+            relationships,
             observations: obs,
         });
     }
@@ -70,5 +81,25 @@ mod tests {
         assert_eq!(ip.sources(), vec!["A", "B"]);
         assert_eq!(ip.confidence, 80); // two agreeing sources at 60
         assert_eq!(ip.tags, vec!["c2", "botnet"]);
+        // The IOA layer derives techniques from the unioned tags.
+        let ids: Vec<&str> = ip
+            .attack_patterns
+            .iter()
+            .map(|p| p.technique_id.as_str())
+            .collect();
+        assert_eq!(ids, vec!["T1071", "T1584.005"]);
+    }
+
+    #[test]
+    fn unions_relationship_edges_without_duplicates() {
+        use crate::model::relationship::{RelationKind, Relationship};
+        let edge = Relationship::new("h.com", "http://h.com/mal", RelationKind::Hosts);
+        let mut a = obs("h.com", IndicatorType::Domain, "A", 60, &[]);
+        a.relationships.push(edge.clone());
+        let mut b = obs("h.com", IndicatorType::Domain, "B", 60, &[]);
+        b.relationships.push(edge.clone());
+
+        let out = aggregate(vec![a, b], &HashMap::new());
+        assert_eq!(out[0].relationships, vec![edge]);
     }
 }

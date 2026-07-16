@@ -3,14 +3,20 @@
 use crate::model::indicator::Indicator;
 
 pub fn render(indicators: &[Indicator]) -> String {
-    let mut out = String::from("value,type,confidence,sources,tags\n");
+    let mut out = String::from("value,type,confidence,sources,tags,attack\n");
     for ind in indicators {
+        let attack: Vec<&str> = ind
+            .attack_patterns
+            .iter()
+            .map(|p| p.technique_id.as_str())
+            .collect();
         let row = [
             ind.value.clone(),
             ind.indicator_type.as_tag().to_string(),
             ind.confidence.to_string(),
             ind.sources().join("|"),
             ind.tags.join("|"),
+            attack.join("|"),
         ];
         let line: Vec<String> = row.iter().map(|f| escape(f)).collect();
         out.push_str(&line.join(","));
