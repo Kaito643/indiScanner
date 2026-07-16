@@ -1,0 +1,42 @@
+# ThreatHarvester configuration (optional).
+# Copy to `threatharvester.toml`, or point $TH_CONFIG / --config at it.
+# Every field has a default, so this whole file is optional.
+
+# Enable/disable sources. Key-gated sources also require their credential in .env.
+[sources]
+threatfox = true
+urlhaus = true
+malwarebazaar = true
+otx = true
+abuseipdb = true
+virustotal = true
+greynoise = true
+shodan = true
+ransomwhere = true
+
+# Cross-run disk cache. Avoids re-hitting rate-limited APIs.
+[cache]
+enabled = true
+ttl_seconds = 3600
+dir = ".th-cache"
+
+# Per-source rate limiting.
+[ratelimit]
+default_ms = 1000   # minimum ms between consecutive requests to the same source
+
+# Overrides per source (lowercase name -> ms). VirusTotal's free tier is
+# 4 requests/minute, so it defaults to 15000 even without this section.
+[ratelimit.per_source]
+virustotal = 15000
+
+# Per-source reliability weights (lowercase name -> 0.0..=1.0; unlisted = 1.0).
+# A weight scales both a source's own confidence claim and how much its
+# agreement boosts the consensus score.
+# [weights]
+# greynoise = 0.8
+# shodan = 0.6
+
+# Entity name -> search terms. The name itself is always included automatically.
+[aliases]
+Lazarus = ["Hidden Cobra", "Zinc", "Lazarus"]
+BlackNevas = ["Trigona", "BlackNevas"]
