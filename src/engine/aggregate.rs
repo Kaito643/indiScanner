@@ -28,6 +28,7 @@ pub fn aggregate(observations: Vec<Observation>, weights: &HashMap<String, f64>)
 
         let mut tags: Vec<String> = Vec::new();
         let mut relationships: Vec<Relationship> = Vec::new();
+        let mut attack_patterns: Vec<crate::model::attack::AttackPattern> = Vec::new();
         for o in &obs {
             for t in &o.tags {
                 if !tags.contains(t) {
@@ -39,8 +40,25 @@ pub fn aggregate(observations: Vec<Observation>, weights: &HashMap<String, f64>)
                     relationships.push(r.clone());
                 }
             }
+            // Source-asserted techniques (sandbox verdicts) come first.
+            for p in &o.attack_patterns {
+                if !attack_patterns
+                    .iter()
+                    .any(|q| q.technique_id == p.technique_id)
+                {
+                    attack_patterns.push(p.clone());
+                }
+            }
         }
-        let attack_patterns = attack::from_tags(&tags);
+        // Tag-derived techniques fill in whatever no source asserted directly.
+        for p in attack::from_tags(&tags) {
+            if !attack_patterns
+                .iter()
+                .any(|q| q.technique_id == p.technique_id)
+            {
+                attack_patterns.push(p);
+            }
+        }
 
         indicators.push(Indicator {
             value: key.0,

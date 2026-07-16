@@ -42,6 +42,7 @@ confidence scoring and clean STIX 2.1 / MISP export.
 | GreyNoise | Internet-scanner context | lookup | ✅ |
 | Shodan | Exposure / CVE context | lookup | ✅ |
 | Ransomwhere | Ransomware BTC addresses | lookup + search | ✅ |
+| Triage (tria.ge) | Sandbox behaviour: TTPs + C2 endpoints | lookup + search | ✅ |
 | MISP, Pulsedive | mixed | — | planned |
 
 ## Roadmap
@@ -58,7 +59,9 @@ confidence scoring and clean STIX 2.1 / MISP export.
 - [x] **Phase 9** — `email` + `crypto` modules (BTC/ETH/XMR, checksum-validated) + Ransomwhere.
 - [x] **IOA groundwork** — MITRE ATT&CK techniques derived from source tags; relationship
       edges (host→URL, sample→sibling hashes) carried on observations and indicators.
-- [ ] **Future** — IOA behaviour edges from sandbox sources (Triage / VT behaviour).
+- [x] **Phase 11** — Triage sandbox source: signature-asserted ATT&CK TTPs and
+      `CommunicatesWith` behaviour edges from detonation network IOCs.
+- [ ] **Future** — MISP integration (when an instance exists); Pulsedive.
 
 ## Build & Run
 
@@ -96,6 +99,7 @@ Copy `.env.example` to `.env` and add API keys:
 - `VT_API_KEY` — enables VirusTotal (free tier is 4 req/min; paced automatically)
 - `GREYNOISE_API_KEY` — enables GreyNoise scanner context (free community key)
 - `SHODAN_API_KEY` — enables Shodan exposure/CVE context
+- `TRIAGE_API_KEY` — enables Triage sandbox behaviour (TTPs, C2 endpoints)
 
 ## Configuration
 

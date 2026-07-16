@@ -19,6 +19,7 @@ pub mod otx;
 pub mod ransomwhere;
 pub mod shodan;
 pub mod threatfox;
+pub mod triage;
 pub mod urlhaus;
 pub mod virustotal;
 
@@ -99,6 +100,12 @@ pub fn from_config(config: &crate::config::Config) -> Vec<Box<dyn ThreatSource>>
         match shodan::Shodan::from_env() {
             Some(s) => sources.push(Box::new(s)),
             None => log::warn!("Shodan disabled: SHODAN_API_KEY not set."),
+        }
+    }
+    if toggles.triage {
+        match triage::Triage::from_env() {
+            Some(t) => sources.push(Box::new(t)),
+            None => log::warn!("Triage disabled: TRIAGE_API_KEY not set."),
         }
     }
     sources
