@@ -3,9 +3,9 @@
 //! GreyNoise watches internet-wide scan traffic and separates known benign
 //! scanners (research projects, common business services) from malicious ones.
 //! Following the AbuseIPDB convention, a benign / RIOT / unseen IP emits no
-//! observation. A `malicious` classification maps to confidence 75; an
-//! unclassified-but-noisy IP (actively mass-scanning the internet) is a weak
-//! signal at 25, tagged `internet-scanner`.
+//! observation. A `malicious` classification maps to confidence 75 and
+//! `suspicious` to 45; an unclassified-but-noisy IP (actively mass-scanning
+//! the internet) is a weak signal at 25, tagged `internet-scanner`.
 
 use super::{Capability, Operation, ThreatSource};
 use crate::model::indicator::{IndicatorType, Observation};
@@ -44,7 +44,8 @@ impl GreyNoise {
         }
         let confidence = match classification {
             "malicious" => 75,
-            // Not classified malicious, but confirmed mass-scanning: weak signal.
+            "suspicious" => 45,
+            // Not classified, but confirmed mass-scanning: weak signal.
             _ if data.noise => 25,
             _ => return None,
         };
@@ -175,6 +176,17 @@ mod tests {
             Some("SSH bruteforcer")
         );
         assert_eq!(obs.last_seen.as_deref(), Some("2026-07-01"));
+    }
+
+    #[test]
+    fn suspicious_is_a_middle_signal() {
+        let obs = GreyNoise::to_observation(
+            &ioc(),
+            &IndicatorType::IPv4,
+            community("suspicious", true, false),
+        )
+        .unwrap();
+        assert_eq!(obs.confidence, 45);
     }
 
     #[test]
