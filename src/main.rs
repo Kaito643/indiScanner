@@ -1,6 +1,7 @@
 //! ThreatHarvester CLI — a thin front-end over the `threat_harvester` library crate.
 
 mod tui;
+mod web;
 
 use clap::{Parser, Subcommand};
 use std::path::Path;
@@ -70,6 +71,12 @@ enum Command {
     Sources,
     /// Launch the interactive terminal UI.
     Tui,
+    /// Serve the local web dashboard + REST API (loopback only).
+    Serve {
+        /// Port to bind on 127.0.0.1.
+        #[arg(short, long, default_value_t = 8080)]
+        port: u16,
+    },
 }
 
 #[tokio::main]
@@ -104,6 +111,10 @@ async fn main() -> anyhow::Result<()> {
             let engine = Engine::new(sources::from_config(&config), config);
             return tui::run(engine).await;
         }
+        Command::Serve { port } => {
+            let addr = std::net::SocketAddr::from(([127, 0, 0, 1], *port));
+            return web::serve(config, addr).await;
+        }
         _ => {}
     }
 
@@ -127,7 +138,7 @@ async fn main() -> anyhow::Result<()> {
             },
             download.then(|| (samples_dir.clone(), *extract)),
         ),
-        Command::Sources | Command::Download { .. } | Command::Tui => {
+        Command::Sources | Command::Download { .. } | Command::Tui | Command::Serve { .. } => {
             unreachable!("handled above")
         }
     };
