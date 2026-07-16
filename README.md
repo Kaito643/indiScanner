@@ -99,6 +99,9 @@ cargo run -- sources
 
 # Interactive terminal UI (query bar, scored results, provenance, export/download)
 cargo run -- tui
+
+# Local web dashboard + REST API (loopback only)
+cargo run -- serve --port 8080
 ```
 
 ### Terminal UI
@@ -109,6 +112,23 @@ bare value to enrich it), browse the consensus-scored indicators on the left, an
 read full per-source provenance, ATT&CK techniques, and relationship edges on the
 right. Keys: `i` or `/` to search, `j`/`k` to move, `e` to export the current set
 to `th-export.json`, `d` to download the selected SHA-256 sample, `q` to quit.
+
+### Web dashboard
+
+`threatharvester serve` starts a local dashboard + JSON REST API on
+`http://127.0.0.1:8080` (**loopback only** — the server holds API keys and reaches
+live-malware sources, so it is never exposed). The browser UI runs an enrich/collect
+query, lists the consensus-scored indicators, and draws each one's **IOA graph** —
+relationship edges (host→URL, sample→sibling hashes, sample→C2) and ATT&CK
+techniques — as an interactive node-link diagram. The API is read-only; sample
+downloading stays CLI/TUI-only by design.
+
+| Endpoint | Method | Returns |
+| --- | --- | --- |
+| `/` | GET | the dashboard (single page) |
+| `/api/sources` | GET | active sources + capabilities |
+| `/api/enrich` | POST `{"value":"…"}` | consensus-scored indicators |
+| `/api/collect` | GET `?entity=&kind=&limit=` | IOCs for a threat entity |
 
 > **Handling samples safely.** Downloaded files are live malware. They arrive as
 > AES-encrypted zips (password `infected`, the abuse.ch convention) so nothing

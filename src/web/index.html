@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThreatHarvester</title>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<style>
+  :root { --bg:#0d1b2a; --panel:#14243a; --line:#26374f; --ink:#d7e3f0; --dim:#8199b5; --accent:#2a72b5; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 "Segoe UI",Arial,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; }
+  header h1 { font-size:18px; margin:0; letter-spacing:-.3px; }
+  header .tag { color:var(--dim); font-size:12px; }
+  .bar { display:flex; gap:8px; padding:14px 20px; border-bottom:1px solid var(--line); flex-wrap:wrap; align-items:center; }
+  select, input, button { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; }
+  input { min-width:280px; }
+  input:focus, select:focus { outline:1px solid var(--accent); }
+  button { background:var(--accent); border-color:var(--accent); cursor:pointer; font-weight:600; }
+  button:hover { filter:brightness(1.1); }
+  #kindWrap, #limitWrap { display:none; }
+  .status { color:var(--dim); font-size:13px; margin-left:auto; }
+  main { display:grid; grid-template-columns: 1fr 1fr; gap:0; height: calc(100vh - 128px); }
+  .col { overflow:auto; }
+  .col.left { border-right:1px solid var(--line); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { position:sticky; top:0; background:var(--panel); text-align:left; padding:8px 12px; color:var(--dim); font-weight:600; border-bottom:1px solid var(--line); }
+  td { padding:7px 12px; border-bottom:1px solid var(--line); }
+  tr { cursor:pointer; }
+  tr:hover td { background:#182c46; }
+  tr.sel td { background:#1d3557; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px; vertical-align:middle; }
+  .val { font-family:Consolas,monospace; }
+  .chip { display:inline-block; background:#1d3557; border:1px solid var(--line); border-radius:10px; padding:0 7px; margin:1px; font-size:11px; }
+  #graph { height:100%; }
+  .empty { color:var(--dim); padding:30px; text-align:center; }
+  .detail { padding:12px 16px; border-bottom:1px solid var(--line); }
+  .detail b { color:var(--dim); font-weight:600; }
+  .kv { font-family:Consolas,monospace; font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ThreatHarvester</h1>
+  <span class="tag">local threat-intel dashboard</span>
+</header>
+
+<div class="bar">
+  <select id="mode">
+    <option value="enrich">enrich</option>
+    <option value="collect">collect</option>
+  </select>
+  <input id="q" placeholder="1.0.164.165  ·  a hash  ·  a wallet" autofocus>
+  <span id="kindWrap">
+    <select id="kind">
+      <option value="malware">malware</option>
+      <option value="actor">actor</option>
+      <option value="campaign">campaign</option>
+    </select>
+  </span>
+  <span id="limitWrap"><input id="limit" type="number" min="1" placeholder="limit" style="min-width:90px"></span>
+  <button id="run">Run</button>
+  <span class="status" id="status">ready</span>
+</div>
+
+<main>
+  <div class="col left">
+    <table>
+      <thead><tr><th>conf</th><th>type</th><th>value</th><th>sources</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="emptyList">Run a query to see indicators.</div>
+  </div>
+  <div class="col right">
+    <div class="detail" id="detail"><div class="empty">Select an indicator to see its provenance and IOA graph.</div></div>
+    <div id="graph"></div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const modeSel = $('mode'), qIn = $('q');
+let results = [], selected = -1, network = null;
+
+modeSel.onchange = () => {
+  const collect = modeSel.value === 'collect';
+  $('kindWrap').style.display = collect ? '' : 'none';
+  $('limitWrap').style.display = collect ? '' : 'none';
+  qIn.placeholder = collect ? 'LockBit  ·  Emotet  ·  Lazarus' : '1.0.164.165  ·  a hash  ·  a wallet';
+};
+$('run').onclick = runQuery;
+qIn.addEventListener('keydown', e => { if (e.key === 'Enter') runQuery(); });
+
+function confColor(c) { return c >= 80 ? '#3fb950' : c >= 50 ? '#d9a441' : '#8199b5'; }
+
+async function runQuery() {
+  const q = qIn.value.trim();
+  if (!q) return;
+  setStatus('querying…');
+  try {
+    let res;
+    if (modeSel.value === 'enrich') {
+      res = await fetch('/api/enrich', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ value: q })
+      });
+    } else {
+      const p = new URLSearchParams({ entity: q, kind: $('kind').value });
+      if ($('limit').value) p.set('limit', $('limit').value);
+      res = await fetch('/api/collect?' + p.toString());
+    }
+    if (!res.ok) { setStatus('error: ' + (await res.text())); return; }
+    results = await res.json();
+    results.sort((a,b) => b.confidence - a.confidence);
+    renderRows();
+    setStatus(results.length + ' indicator(s)');
+    if (results.length) selectRow(0); else { $('detail').innerHTML = '<div class="empty">No results.</div>'; clearGraph(); }
+  } catch (e) { setStatus('request failed: ' + e.message); }
+}
+
+function renderRows() {
+  const tb = $('rows');
+  tb.innerHTML = '';
+  $('emptyList').style.display = results.length ? 'none' : '';
+  results.forEach((ind, i) => {
+    const tr = document.createElement('tr');
+    tr.onclick = () => selectRow(i);
+    const srcs = [...new Set(ind.observations.map(o => o.source))].join(', ');
+    tr.innerHTML =
+      `<td><span class="dot" style="background:${confColor(ind.confidence)}"></span>${ind.confidence}</td>` +
+      `<td>${ind.indicator_type_tag || tagOf(ind)}</td>` +
+      `<td class="val">${escapeHtml(trunc(ind.value, 40))}</td>` +
+      `<td style="color:var(--dim)">${escapeHtml(srcs)}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// indicator_type is an enum serialized as a string like "Sha256" / {"Other":"x"}
+function tagOf(ind) {
+  const t = ind.indicator_type;
+  return typeof t === 'string' ? t.toLowerCase() : 'other';
+}
+
+function selectRow(i) {
+  selected = i;
+  [...$('rows').children].forEach((tr, j) => tr.classList.toggle('sel', j === i));
+  renderDetail(results[i]);
+  renderGraph(results[i]);
+}
+
+function renderDetail(ind) {
+  const techs = (ind.attack_patterns || []).map(p => `<span class="chip">${p.technique_id}${p.name ? ' · ' + escapeHtml(p.name) : ''}</span>`).join(' ');
+  const obs = ind.observations.map(o => {
+    const ctx = Object.entries(o.context || {}).slice(0,3).map(([k,v]) => `${k}=${escapeHtml(String(v))}`).join('  ');
+    return `<div class="kv"><span class="dot" style="background:${confColor(o.confidence)}"></span>${escapeHtml(o.source)} <b>${o.confidence}</b>  ${ctx}</div>`;
+  }).join('');
+  $('detail').innerHTML =
+    `<div class="kv" style="font-size:13px"><b>value</b> ${escapeHtml(ind.value)}</div>` +
+    `<div class="kv"><b>type</b> ${tagOf(ind)} &nbsp; <b>confidence</b> <span style="color:${confColor(ind.confidence)}">${ind.confidence}</span></div>` +
+    (techs ? `<div style="margin-top:8px"><b>ATT&CK</b> ${techs}</div>` : '') +
+    `<div style="margin-top:8px"><b>sources</b></div>${obs}`;
+}
+
+function clearGraph() { if (network) { network.destroy(); network = null; } }
+
+function renderGraph(ind) {
+  clearGraph();
+  const nodes = [], edges = [];
+  const center = ind.value;
+  nodes.push({ id: center, label: trunc(center, 22), shape:'box',
+    color:{background:'#1d3557',border:'#2a72b5'}, font:{color:'#d7e3f0'}, borderWidth:2 });
+
+  (ind.relationships || []).forEach(r => {
+    const other = r.source_value === center ? r.target_value : r.source_value;
+    if (!nodes.find(n => n.id === other)) {
+      nodes.push({ id: other, label: trunc(other, 20), shape:'dot', size:10,
+        color:{background:'#7a3030',border:'#c98a8a'}, font:{color:'#c9b8b8'} });
+    }
+    edges.push({ from: center, to: other, label: r.kind, font:{color:'#8199b5',size:10}, color:{color:'#8a5a2d'}, arrows:'to' });
+  });
+
+  (ind.attack_patterns || []).forEach(p => {
+    const id = 'ttp:' + p.technique_id;
+    nodes.push({ id, label: p.technique_id, shape:'dot', size:8,
+      color:{background:'#14365c',border:'#2a72b5'}, font:{color:'#9fb3c8'} });
+    edges.push({ from: center, to: id, dashes:true, color:{color:'#2a72b5'}, arrows:'to' });
+  });
+
+  if (nodes.length <= 1) {
+    $('graph').innerHTML = '<div class="empty">No relationship edges or techniques for this indicator.</div>';
+    return;
+  }
+  $('graph').innerHTML = '';
+  network = new vis.Network($('graph'),
+    { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) },
+    { physics:{ stabilization:true, barnesHut:{ springLength:130 } },
+      interaction:{ hover:true }, nodes:{ font:{ size:12 } } });
+}
+
+function setStatus(s) { $('status').textContent = s; }
+function trunc(s, n) { return s.length > n ? s.slice(0, n-1) + '…' : s; }
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+</script>
+</body>
+</html>
