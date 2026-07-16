@@ -11,7 +11,7 @@
 use super::{Capability, Operation, ThreatSource};
 use crate::model::entity::ThreatEntity;
 use crate::model::indicator::{IndicatorType, Observation};
-use crate::model::request::RawIoc;
+use crate::model::request::{Filters, RawIoc};
 use crate::util::{http_client, send_with_retry};
 use anyhow::Result;
 use async_trait::async_trait;
@@ -132,9 +132,9 @@ impl ThreatSource for Ransomwhere {
             .collect())
     }
 
-    async fn search(&self, entity: &ThreatEntity) -> Result<Vec<Observation>> {
+    async fn search(&self, entity: &ThreatEntity, filters: &Filters) -> Result<Vec<Observation>> {
         let needle = entity.name.to_lowercase();
-        let matches: Vec<Observation> = self
+        let mut matches: Vec<Observation> = self
             .entries()
             .await?
             .iter()
@@ -145,6 +145,16 @@ impl ThreatSource for Ransomwhere {
             })
             .map(Self::to_observation)
             .collect();
+        // The dataset is local, so a user cap is a plain truncation.
+        if let Some(max) = filters.max_results {
+            if matches.len() > max {
+                log::warn!(
+                    "Ransomwhere: truncating {} results to --limit {max}",
+                    matches.len()
+                );
+                matches.truncate(max);
+            }
+        }
         debug!(
             "Ransomwhere: {} addresses for '{}'",
             matches.len(),

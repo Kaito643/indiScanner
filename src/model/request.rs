@@ -35,4 +35,7 @@ impl RawIoc {
 pub struct Filters {
     /// Look back this many days (`None` = use each source's default).
     pub lookback_days: Option<u32>,
+    /// Cap results per source (`None` = each source's API maximum). Sources
+    /// log a warning when a response hits the cap, so truncation is never silent.
+    pub max_results: Option<usize>,
 }

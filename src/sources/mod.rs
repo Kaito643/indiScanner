@@ -8,7 +8,7 @@
 
 use crate::model::entity::ThreatEntity;
 use crate::model::indicator::{IndicatorType, Observation};
-use crate::model::request::RawIoc;
+use crate::model::request::{Filters, RawIoc};
 use anyhow::Result;
 use async_trait::async_trait;
 
@@ -28,6 +28,20 @@ pub(crate) fn abuse_ch_key() -> Option<String> {
     std::env::var("ABUSE_CH_AUTH_KEY")
         .ok()
         .filter(|k| !k.is_empty())
+}
+
+/// The effective per-source search cap: the user's `--limit` clamped to the
+/// source's API maximum, or the API maximum itself when no limit was given.
+pub(crate) fn search_cap(filters: &Filters, api_max: usize) -> usize {
+    filters.max_results.unwrap_or(api_max).min(api_max)
+}
+
+/// Surface a possible truncation — a response that fills its cap probably has
+/// more rows behind it, and silent caps read as full coverage.
+pub(crate) fn warn_if_capped(source: &str, returned: usize, cap: usize) {
+    if returned >= cap {
+        log::warn!("{source}: {returned} results hit the cap of {cap}; more may exist");
+    }
 }
 
 /// A human-readable hint for a failed abuse.ch HTTP status.
@@ -140,8 +154,30 @@ pub trait ThreatSource: Send + Sync {
         Ok(Vec::new())
     }
 
-    /// Collection: gather observations related to a threat entity.
-    async fn search(&self, _entity: &ThreatEntity) -> Result<Vec<Observation>> {
+    /// Collection: gather observations related to a threat entity, honoring
+    /// the request's [`Filters`] (result caps, lookback).
+    async fn search(&self, _entity: &ThreatEntity, _filters: &Filters) -> Result<Vec<Observation>> {
         Ok(Vec::new())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn search_cap_clamps_to_api_max() {
+        let none = Filters::default();
+        assert_eq!(search_cap(&none, 1000), 1000);
+        let small = Filters {
+            max_results: Some(50),
+            ..Default::default()
+        };
+        assert_eq!(search_cap(&small, 1000), 50);
+        let huge = Filters {
+            max_results: Some(9999),
+            ..Default::default()
+        };
+        assert_eq!(search_cap(&huge, 1000), 1000);
     }
 }

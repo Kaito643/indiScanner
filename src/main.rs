@@ -37,6 +37,9 @@ enum Command {
         /// Entity kind: actor | malware | campaign
         #[arg(short, long, default_value = "malware")]
         kind: String,
+        /// Cap results per source (default: each source's API maximum).
+        #[arg(short, long)]
+        limit: Option<usize>,
     },
     /// List the active sources and what each can answer.
     Sources,
@@ -56,9 +59,16 @@ async fn main() -> anyhow::Result<()> {
 
     let request = match &cli.command {
         Command::Enrich { value } => Request::Enrich(RawIoc::new(value.clone())),
-        Command::Collect { target, kind } => Request::Collect {
+        Command::Collect {
+            target,
+            kind,
+            limit,
+        } => Request::Collect {
             entity: ThreatEntity::new(target.clone(), parse_kind(kind)),
-            filters: Filters::default(),
+            filters: Filters {
+                max_results: *limit,
+                ..Filters::default()
+            },
         },
         Command::Sources => {
             print_sources(&sources::from_config(&config));
