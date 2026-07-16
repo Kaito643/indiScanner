@@ -43,6 +43,7 @@ pub struct SourceToggles {
     pub virustotal: bool,
     pub greynoise: bool,
     pub shodan: bool,
+    pub ransomwhere: bool,
 }
 
 impl Default for SourceToggles {
@@ -56,6 +57,7 @@ impl Default for SourceToggles {
             virustotal: true,
             greynoise: true,
             shodan: true,
+            ransomwhere: true,
         }
     }
 }

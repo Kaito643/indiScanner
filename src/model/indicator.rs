@@ -24,6 +24,10 @@ pub enum IndicatorType {
     Ssdeep,
     // email
     Email,
+    // crypto wallets
+    Btc,
+    Eth,
+    Xmr,
     /// Not yet modelled; carries the original type label from the source.
     Other(String),
 }
@@ -42,6 +46,9 @@ impl IndicatorType {
             IndicatorType::Sha512 => "sha512",
             IndicatorType::Ssdeep => "ssdeep",
             IndicatorType::Email => "email",
+            IndicatorType::Btc => "btc",
+            IndicatorType::Eth => "eth",
+            IndicatorType::Xmr => "xmr",
             IndicatorType::Other(_) => "other",
         }
     }

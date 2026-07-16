@@ -41,6 +41,7 @@ confidence scoring and clean STIX 2.1 / MISP export.
 | VirusTotal | Multi-engine verdicts | lookup | ✅ |
 | GreyNoise | Internet-scanner context | lookup | ✅ |
 | Shodan | Exposure / CVE context | lookup | ✅ |
+| Ransomwhere | Ransomware BTC addresses | lookup + search | ✅ |
 | MISP, Pulsedive | mixed | — | planned |
 
 ## Roadmap
@@ -54,6 +55,7 @@ confidence scoring and clean STIX 2.1 / MISP export.
 - [x] **Phase 6** — `file` module (hash digests + ssdeep) + MalwareBazaar.
 - [x] **Phase 7** — VirusTotal v3 + per-source rate limits.
 - [x] **Phase 8** — GreyNoise + Shodan (network enrichment context).
+- [x] **Phase 9** — `email` + `crypto` modules (BTC/ETH/XMR, checksum-validated) + Ransomwhere.
 - [ ] **Future** — Indicators of Attack (IOA): relationship graph + MITRE ATT&CK mapping.
 
 ## Build & Run
@@ -69,6 +71,10 @@ cargo run -- enrich "1[.]2[.]3[.]4"
 
 # Enrich a file hash (MD5/SHA-1/SHA-256/SHA-512/ssdeep auto-detected)
 cargo run -- enrich 803385cf25070740f5b09e685d2f531c
+
+# Enrich an email address or a crypto wallet (BTC/ETH/XMR)
+cargo run -- enrich "user[at]evil[.]com"
+cargo run -- enrich 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
 
 # Collect IOCs for a threat entity (aliases are expanded automatically)
 cargo run -- collect LockBit --kind actor

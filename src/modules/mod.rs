@@ -6,8 +6,12 @@
 
 use crate::model::indicator::IndicatorType;
 
+mod crypto;
+mod email;
 mod file;
 mod network;
+pub use crypto::CryptoModule;
+pub use email::EmailModule;
 pub use file::FileModule;
 pub use network::NetworkModule;
 
@@ -34,8 +38,15 @@ pub trait IocModule: Send + Sync {
 
 /// The default set of IOC-type modules, in priority order.
 pub fn default_modules() -> Vec<Box<dyn IocModule>> {
-    vec![Box::new(NetworkModule), Box::new(FileModule)]
-    // email and further modules join here in later work.
+    // Crypto must precede file: a 32-char legacy BTC address can in principle
+    // be all-hex and look like an MD5, and only crypto can checksum-validate it.
+    // The other type spaces are disjoint (no dots, no '@', no digest lengths).
+    vec![
+        Box::new(NetworkModule),
+        Box::new(EmailModule),
+        Box::new(CryptoModule),
+        Box::new(FileModule),
+    ]
 }
 
 /// Detect the type of a raw IOC by consulting each module in order.
