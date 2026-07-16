@@ -30,6 +30,10 @@ futures = "0.3"
 toml = "0.8"
 base64 = "0.22"
 sha2 = "0.10"
+# abuse.ch ships AES-encrypted, deflated sample ZIPs; enable just those two
+# (both pure-Rust) and skip the C-backed codecs (zstd/lzma/bzip2) the defaults
+# would pull in.
+zip = { version = "2.2", default-features = false, features = ["deflate", "aes-crypto"] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 uuid = { version = "1", features = ["v5"] }
 
